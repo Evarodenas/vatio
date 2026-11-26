@@ -411,7 +411,12 @@ impl Vatio {
         };
         let envelope = match answer {
             Ok(envelope) => envelope,
-            Err(failure) if failure.is_no_data() => return Err(not_published()),
+            // "Nothing for that range" is how a day still to come, or one before the
+            // records begin, is answered. Today's prices were published yesterday, so
+            // for today the same answer is a failure on REData's side.
+            Err(failure) if failure.is_no_data() && day != time::today(now) => {
+                return Err(not_published());
+            }
             Err(failure) => return Err(failure.into_error()),
         };
 

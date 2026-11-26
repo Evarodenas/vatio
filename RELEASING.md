@@ -7,30 +7,21 @@ installers, and attaches them to a GitHub release.
 
 ## Before the first release
 
-These have not been done yet; nothing has been published anywhere.
+Nothing has been published anywhere yet. Done so far:
 
-1. Create the GitHub repository and push. `Cargo.toml` and the README assume
-   `github.com/Evarodenas/vatio`; change both if the repository lives elsewhere.
-2. Check the name is still free: `cargo search vatio`. It was on 2026-11-26.
-3. Run the tool against the live API (the development sandbox could not reach it):
-   `vatio now && vatio prices tomorrow; vatio cheapest 3h && vatio grid`
-   Then look at the cases that were built from documentation rather than observation:
-   what REData answers for a day with nothing published, and for a bad request.
+- The repository is at `github.com/Evarodenas/vatio`, and CI has passed on Linux, macOS
+  and Windows, on the MSRV (Rust 1.88) and on stable.
+- Every command has been run against the live API (2026-11-26, from a GitHub runner).
+  That run is where the error answers in `tests/fixtures/` come from, and it found two
+  faults that the fixtures now cover; `tests/fixtures/README.md` has the details.
 
-   ```sh
-   B=https://apidatos.ree.es/es/datos
-   curl -sS -i "$B/mercados/precios-mercados-tiempo-real?start_date=2030-01-01T00:00&end_date=2030-01-01T23:59&time_trunc=hour"
-   curl -sS -i "$B/generacion/estructura-generacion?start_date=2026-11-24T00:00&end_date=2026-11-24T23:59&time_trunc=hour"
-   curl -sS -i "$B/mercados/no-existe?start_date=2026-11-24T00:00&end_date=2026-11-24T23:59&time_trunc=hour"
-   ```
+Still to do:
 
-   If the "no data" wording differs from the phrases in `Failure::is_no_data`
-   (`src/redata.rs`), add it there.
-4. Let CI run on the first push. The Windows and macOS jobs and the MSRV job (Rust 1.88)
-   have never run; only Linux with Rust 1.97 has. The clippy job uses the latest stable
-   toolchain with warnings as errors, so it may flag lints that 1.97 does not have.
-5. Replace the transcribed fixtures in `tests/fixtures/` with raw captures
-   (`tests/fixtures/README.md` lists the requests).
+1. Check the name is still free: `cargo search vatio`. It was on 2026-11-26.
+2. Run it once from a home connection before midday, when tomorrow's prices are not out
+   for either market: `vatio prices tomorrow` should say so and exit with 3. The live run
+   was in the evening, so that answer was observed for the day after tomorrow, not for
+   tomorrow itself.
 
 ## Cutting a release
 

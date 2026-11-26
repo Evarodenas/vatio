@@ -100,6 +100,29 @@ jobs:
           raw error_bad_widget  "$B/mercados/no-existe?start_date=${YESTERDAY}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=hour"
           raw error_reversed    "$P?start_date=${TODAY}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=hour"
           raw cors_probe        "$P?start_date=${TODAY}T00:00&end_date=${TODAY}T23:59&time_trunc=hour" -H 'Origin: https://example.org'
+
+          # Second run: is the emissions factor series out of step only in some ranges?
+          C="$B/generacion/no-renovables-detalle-emisiones-CO2"
+          M="$B/generacion/estructura-generacion"
+          for d in 22 23 24 25; do
+            raw "co2_2026-11-${d}" "$C?start_date=2026-11-${d}T00:00&end_date=2026-11-${d}T23:59&time_trunc=day"
+          done
+          raw co2_2026-11-23_24 "$C?start_date=2026-11-23T00:00&end_date=2026-11-24T23:59&time_trunc=day"
+          raw co2_2026-11-23_25 "$C?start_date=2026-11-23T00:00&end_date=2026-11-25T23:59&time_trunc=day"
+          raw co2_2026-11-22_25 "$C?start_date=2026-11-22T00:00&end_date=2026-11-25T23:59&time_trunc=day"
+          raw co2_2026-11-01_25 "$C?start_date=2026-11-01T00:00&end_date=2026-11-25T23:59&time_trunc=day"
+          raw mix_2026-11-01_25 "$M?start_date=2026-11-01T00:00&end_date=2026-11-25T23:59&time_trunc=day"
+
+          # History, for testing a forecast against what actually happened.
+          D120=$(TZ=Europe/Madrid date -d '120 days ago' +%F)
+          raw prices_spot_2025-06-01 "$P?start_date=2025-06-01T00:00&end_date=2025-06-01T23:59&time_trunc=hour"
+          raw prices_120_days "$P?start_date=${D120}T00:00&end_date=${TODAY}T23:59&time_trunc=hour"
+          for m in 08 09 10; do
+            last=$(date -d "2026-${m}-01 +1 month -1 day" +%d)
+            raw "prices_2026-${m}" "$P?start_date=2026-${m}-01T00:00&end_date=2026-${m}-${last}T23:59&time_trunc=hour"
+          done
+          raw mix_120_days    "$M?start_date=${D120}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=day"
+          raw demand_120_days "$B/demanda/evolucion?start_date=${D120}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=day"
           date -u +"%Y-%m-%dT%H:%M:%SZ" > live/finished_at.txt
 
       - name: Commit what was seen

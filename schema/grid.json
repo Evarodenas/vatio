@@ -91,7 +91,7 @@
       "description": "Generation mix for one day. Red Eléctrica publishes this per day, not live, and\nrevises recent days for a while, so treat the latest figures as provisional.",
       "properties": {
         "co2_g_per_kwh": {
-          "description": "Average emissions per unit generated, in grams of CO2 equivalent per kWh.",
+          "description": "Average emissions per unit generated, in grams of CO2 equivalent per kWh:\n`co2_tonnes` over `total_mwh`.",
           "format": "double",
           "type": [
             "number",

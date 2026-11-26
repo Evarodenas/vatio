@@ -34,7 +34,7 @@ pub struct Header {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct HeaderAttributes {
-    #[serde(rename = "last-update", default)]
+    #[serde(rename = "last-update", default, deserialize_with = "lenient")]
     pub last_update: Option<String>,
 }
 
@@ -50,22 +50,22 @@ impl Envelope {
 pub struct Series {
     #[serde(deserialize_with = "string_or_number")]
     pub id: String,
-    #[serde(rename = "type", default)]
+    #[serde(rename = "type", default, deserialize_with = "lenient")]
     pub kind: Option<String>,
     pub attributes: Attributes,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Attributes {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient")]
     pub title: Option<String>,
     /// Classification some widgets attach to a series (for example renewable or not).
-    #[serde(rename = "type", default)]
+    #[serde(rename = "type", default, deserialize_with = "lenient")]
     pub class: Option<String>,
     /// True for totals and other series derived from the rest.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "lenient")]
     pub composite: bool,
-    #[serde(rename = "last-update", default)]
+    #[serde(rename = "last-update", default, deserialize_with = "lenient")]
     pub last_update: Option<String>,
     #[serde(default)]
     pub values: Vec<Value>,
@@ -114,18 +114,19 @@ pub enum Failure {
 }
 
 impl Failure {
-    /// Whether REData is saying "nothing published for those filters". Its wording for
-    /// that case has not been observed, so this matches the obvious phrasings; an
-    /// unmatched message is simply reported as the upstream error it is.
+    /// Whether REData is saying that it holds nothing for the range asked for. On the
+    /// live API (2026-11-26) that is HTTP 502 with an error document reading "Los datos
+    /// solicitados no están disponibles en este momento. Inténtelo de nuevo más tarde."
+    /// A rejected request gets the same words under HTTP 400, so the status decides,
+    /// and the API has no separate way of reporting a failure of its own: callers that
+    /// know data must exist for the range should treat this as a failure.
     pub fn is_no_data(&self) -> bool {
         match self {
-            Self::Api { message, .. } => {
-                let m = message.to_lowercase();
-                ["no data", "no values", "no hay datos", "sin datos"]
-                    .iter()
-                    .any(|p| m.contains(p))
-            }
-            Self::Other(_) => false,
+            Self::Api {
+                status: 502,
+                message,
+            } => message.to_lowercase().contains("no están disponibles"),
+            _ => false,
         }
     }
 
@@ -355,6 +356,18 @@ pub fn redact(url: &str) -> String {
     }
 }
 
+/// Read a field that describes a series but is not needed to use its values. A value of
+/// an unexpected type counts as absent instead of spoiling the whole answer: the live
+/// API has put a number where the last-update time of a series belongs.
+fn lenient<'de, D, T>(d: D) -> std::result::Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned + Default,
+{
+    let value = serde_json::Value::deserialize(d)?;
+    Ok(serde_json::from_value(value).unwrap_or_default())
+}
+
 fn string_or_number<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> std::result::Result<String, D::Error> {
@@ -531,6 +544,35 @@ mod tests {
     }
 
     #[test]
+    fn a_field_of_the_wrong_type_does_not_spoil_the_answer() {
+        // Byte for byte from the live API: the total series carries a number where its
+        // last-update time belongs, and lists its days out of order.
+        let path = format!(
+            "{}/tests/fixtures/redata_co2_emissions_day_2026-11-22_25.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let env = classify(200, &std::fs::read(path).unwrap(), "h").unwrap();
+        let total = env.included.iter().find(|s| s.id == "tCO2 eq.").unwrap();
+        assert_eq!(total.last_update(), None);
+        assert!(total.attributes.composite);
+        let days = total.observations().unwrap();
+        assert_eq!(days.len(), 4);
+        assert!(days.is_sorted_by_key(|(at, _)| *at));
+        assert!(env.last_update().is_some());
+
+        let odd = r#"{"included":[{"id":7,"type":3,"attributes":{"title":null,"type":[],
+            "composite":"yes","last-update":{},"values":[{"value":1,"datetime":"2026-11-25T00:00:00.000+01:00"}]}}]}"#;
+        let env = classify(200, odd.as_bytes(), "h").unwrap();
+        let s = &env.included[0];
+        assert_eq!(
+            (s.id.as_str(), &s.kind, &s.attributes.title),
+            ("7", &None, &None)
+        );
+        assert!(!s.attributes.composite);
+        assert_eq!(s.observations().unwrap().len(), 1);
+    }
+
+    #[test]
     fn server_side_api_errors_are_retried_but_no_data_is_not() {
         let transient = |status, message: &str| {
             Failure::Api {
@@ -540,11 +582,24 @@ mod tests {
             .is_transient()
         };
         assert!(transient(503, "Service unavailable"));
-        assert!(!transient(
-            502,
-            "There are no data for the selected filters."
-        ));
+        assert!(transient(502, "Bad gateway"));
         assert!(!transient(400, "Error in start date"));
+
+        // What the live API answers for a range with nothing in it, and for a request
+        // it rejects: the same words, told apart by the status alone.
+        let live = |name: &str, status| {
+            let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+            classify(status, &std::fs::read(path).unwrap(), "h").unwrap_err()
+        };
+        let nothing = live("redata_error_no_data_502.json", 502);
+        assert!(nothing.is_no_data() && !nothing.is_transient());
+        let rejected = live("redata_error_bad_request_400.json", 400);
+        assert!(!rejected.is_no_data() && !rejected.is_transient());
+        assert_eq!(
+            rejected.into_error().to_string(),
+            "REData error 400: Los datos solicitados no están disponibles en este momento. \
+             Inténtelo de nuevo más tarde."
+        );
         assert!(Failure::Other(Error::Blocked { status: 403 }).is_transient());
         assert!(!Failure::Other(Error::usage("x")).is_transient());
     }
