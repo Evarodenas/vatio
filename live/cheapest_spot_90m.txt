@@ -1,0 +1,7 @@
+Cheapest 1h30m on Day-ahead spot · searched Thu 26 Nov 22:27 → Fri 27 Nov 24:00 · €/MWh, wholesale
+
+  ★ Fri 27 Nov 13:45–15:15   177.52 €/MWh   starts in 15h18m
+
+  Starting now (22:27–23:57) would average 236.35 €/MWh.
+  Waiting saves 58.83 €/MWh (24.9%).
+  Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 14:51

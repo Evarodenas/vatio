@@ -1,0 +1,163 @@
+{
+  "schema": "vatio.grid/v1",
+  "area": "spain",
+  "at": "2026-11-26T22:27:59+01:00",
+  "timezone": "Europe/Madrid",
+  "demand": {
+    "at": "2026-11-26T22:15:00+01:00",
+    "actual_mw": 35006.0,
+    "forecast_mw": 35037.0,
+    "scheduled_mw": 34445.0,
+    "resolution_minutes": 5,
+    "peak_today": {
+      "at": "2026-11-26T20:35:00+01:00",
+      "mw": 38955.0
+    },
+    "low_today": {
+      "at": "2026-11-26T04:15:00+01:00",
+      "mw": 24455.0
+    }
+  },
+  "generation": {
+    "day": "2026-11-25",
+    "total_mwh": 892181.3,
+    "renewable_percent": 66.3,
+    "co2_g_per_kwh": null,
+    "co2_tonnes": null,
+    "technologies": [
+      {
+        "id": "wind",
+        "name": "Wind",
+        "name_es": "Eólica",
+        "renewable": true,
+        "mwh": 389693.6,
+        "percent": 43.7
+      },
+      {
+        "id": "nuclear",
+        "name": "Nuclear",
+        "name_es": "Nuclear",
+        "renewable": false,
+        "mwh": 145846.6,
+        "percent": 16.3
+      },
+      {
+        "id": "combined_cycle",
+        "name": "Combined-cycle gas",
+        "name_es": "Ciclo combinado",
+        "renewable": false,
+        "mwh": 101710.2,
+        "percent": 11.4
+      },
+      {
+        "id": "solar_pv",
+        "name": "Solar PV",
+        "name_es": "Solar fotovoltaica",
+        "renewable": true,
+        "mwh": 99209.9,
+        "percent": 11.1
+      },
+      {
+        "id": "hydro",
+        "name": "Hydro",
+        "name_es": "Hidráulica",
+        "renewable": true,
+        "mwh": 87394.9,
+        "percent": 9.8
+      },
+      {
+        "id": "cogeneration",
+        "name": "Cogeneration",
+        "name_es": "Cogeneración",
+        "renewable": false,
+        "mwh": 28481.3,
+        "percent": 3.2
+      },
+      {
+        "id": "biofuels",
+        "name": "Biofuels",
+        "name_es": "Biocombustibles",
+        "renewable": true,
+        "mwh": 11201.6,
+        "percent": 1.3
+      },
+      {
+        "id": "steam_turbine",
+        "name": "Steam turbine",
+        "name_es": "Turbina de vapor",
+        "renewable": false,
+        "mwh": 10078.9,
+        "percent": 1.1
+      },
+      {
+        "id": "combustion_engines",
+        "name": "Combustion engines",
+        "name_es": "Motor combustión interna",
+        "renewable": false,
+        "mwh": 5753.7,
+        "percent": 0.6
+      },
+      {
+        "id": "coal",
+        "name": "Coal",
+        "name_es": "Carbón",
+        "renewable": false,
+        "mwh": 4622.8,
+        "percent": 0.5
+      },
+      {
+        "id": "non_renewable_waste",
+        "name": "Non-renewable waste",
+        "name_es": "Residuos no renovables",
+        "renewable": false,
+        "mwh": 3271.7,
+        "percent": 0.4
+      },
+      {
+        "id": "renewable_waste",
+        "name": "Renewable waste",
+        "name_es": "Residuos renovables",
+        "renewable": true,
+        "mwh": 2421.2,
+        "percent": 0.3
+      },
+      {
+        "id": "gas_turbine",
+        "name": "Gas turbine",
+        "name_es": "Turbina de gas",
+        "renewable": false,
+        "mwh": 1271.5,
+        "percent": 0.1
+      },
+      {
+        "id": "solar_thermal",
+        "name": "Solar thermal",
+        "name_es": "Solar térmica",
+        "renewable": true,
+        "mwh": 1223.5,
+        "percent": 0.1
+      }
+    ]
+  },
+  "warnings": [
+    "emissions figures are unavailable: REData answered HTTP 200 with a body this version cannot read"
+  ],
+  "sources": [
+    {
+      "name": "Red Eléctrica de España (REData)",
+      "dataset": "demand",
+      "url": "https://apidatos.ree.es/es/datos/demanda/demanda-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
+      "updated_at": "2026-11-26T22:22:05+01:00",
+      "fetched_at": "2026-11-26T22:27:59+01:00",
+      "cached": false
+    },
+    {
+      "name": "Red Eléctrica de España (REData)",
+      "dataset": "generation",
+      "url": "https://apidatos.ree.es/es/datos/generacion/estructura-generacion?start_date=2026-11-22T00:00&end_date=2026-11-25T23:59&time_trunc=day",
+      "updated_at": "2026-11-26T08:26:36+01:00",
+      "fetched_at": "2026-11-26T22:27:59+01:00",
+      "cached": false
+    }
+  ]
+}

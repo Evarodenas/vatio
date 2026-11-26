@@ -1,0 +1,18 @@
+HTTP/2 200 
+date: Thu, 26 Nov 2026 22:28:41 GMT
+access-control-allow-origin: *
+access-control-allow-headers: Origin, X-Requested-With, Content-Type, Accept
+x-cache: HIT
+cache-control: no-cache, private
+referrer-policy: no-referrer
+content-type: application/json
+strict-transport-security: max-age=31536000; includeSubDomains
+x-xss-protection: 1; mode=block
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-forwarded-proto: https
+set-cookie: visid_incap_2001527=VyvI1VfcROWmXOwAOVdZxmmkCGsAAAAAQUIPAAAAAABr9McJF0lGH9tz+fKtUjGw; expires=Fri, 26 Nov 2027 06:38:51 GMT; HttpOnly; path=/; Domain=.ree.es; Secure; SameSite=None
+set-cookie: incap_ses_912_2001527=kBoZcyKq4w4pMoewSxOoDGmkCGsAAAAAUAH14RAAkPuk24XlIfckDg==; path=/; Domain=.ree.es; Secure; SameSite=None
+x-cdn: Imperva
+x-iinfo: 41-28696235-28696244 NNNN CT(179 369 0) RT(1795728488971 17) q(0 0 5 -1) r(8 8) U2
+

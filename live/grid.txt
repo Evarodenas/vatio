@@ -1,0 +1,26 @@
+Spain's grid · Thu 26 Nov 22:28
+
+  Demand  35,006 MW at 22:15  ·  forecast 35,037  ·  scheduled 34,445
+          today so far: peak 38,955 MW at 20:35  ·  low 24,455 MW at 04:15
+
+  Generation on Wed 25 Nov (latest daily figures, provisional)  ·  892.2 GWh
+  66.3% renewable
+
+    Wind                   389.7 GWh   43.7%  ██████████████████████
+    Nuclear                145.8 GWh   16.3%  ████████▎
+    Combined-cycle gas     101.7 GWh   11.4%  █████▊
+    Solar PV                99.2 GWh   11.1%  █████▋
+    Hydro                   87.4 GWh    9.8%  ████▉
+    Cogeneration            28.5 GWh    3.2%  █▋
+    Biofuels                11.2 GWh    1.3%  ▋
+    Steam turbine           10.1 GWh    1.1%  ▋
+    Combustion engines       5.8 GWh    0.6%  ▍
+    Coal                     4.6 GWh    0.5%  ▎
+    Non-renewable waste      3.3 GWh    0.4%  ▏
+    Renewable waste          2.4 GWh    0.3%  ▏
+    Gas turbine              1.3 GWh    0.1%  ▏
+    Solar thermal            1.2 GWh    0.1%  ▏
+
+  ! emissions figures are unavailable: REData answered HTTP 200 with a body this version cannot read
+  Source: Red Eléctrica de España (REData)
+  Updated: demand Thu 26 Nov 22:22 · generation Thu 26 Nov 08:26

@@ -1,0 +1,15 @@
+total 80
+drwxr-xr-x 2 runner runner 4096 Nov 26 21:27 .
+drwxr-xr-x 5 runner runner 4096 Nov 26 21:27 ..
+-rw-r--r-- 1 runner runner 1558 Nov 26 21:27 prices-pvpc-2025-06-01.json
+-rw-r--r-- 1 runner runner 1501 Nov 26 21:27 prices-pvpc-2026-03-29.json
+-rw-r--r-- 1 runner runner 1620 Nov 26 21:27 prices-pvpc-2026-10-25.json
+-rw-r--r-- 1 runner runner 1573 Nov 26 21:27 prices-pvpc-2026-11-25.json
+-rw-r--r-- 1 runner runner 1576 Nov 26 21:27 prices-pvpc-2026-11-26.json
+-rw-r--r-- 1 runner runner 1573 Nov 26 21:27 prices-pvpc-2026-11-27.json
+-rw-r--r-- 1 runner runner 5404 Nov 26 21:27 prices-spot-2025-06-01.json
+-rw-r--r-- 1 runner runner 5139 Nov 26 21:27 prices-spot-2026-03-29.json
+-rw-r--r-- 1 runner runner 5668 Nov 26 21:27 prices-spot-2026-10-25.json
+-rw-r--r-- 1 runner runner 5447 Nov 26 21:27 prices-spot-2026-11-25.json
+-rw-r--r-- 1 runner runner 5502 Nov 26 21:27 prices-spot-2026-11-26.json
+-rw-r--r-- 1 runner runner 5504 Nov 26 21:27 prices-spot-2026-11-27.json

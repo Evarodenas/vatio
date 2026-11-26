@@ -1,0 +1,48 @@
+{
+  "schema": "vatio.cheapest/v1",
+  "market": "spot",
+  "area": "peninsula",
+  "timezone": "Europe/Madrid",
+  "duration_minutes": 90,
+  "searched": {
+    "from": "2026-11-26T22:27:00+01:00",
+    "until": "2026-11-28T00:00:00+01:00",
+    "tomorrow": "included"
+  },
+  "best": {
+    "start": "2026-11-27T13:45:00+01:00",
+    "end": "2026-11-27T15:15:00+01:00",
+    "mean_eur_per_mwh": 177.52,
+    "mean_eur_per_kwh": 0.17752,
+    "starts_in_minutes": 918
+  },
+  "alternatives": [],
+  "earliest": {
+    "start": "2026-11-26T22:27:00+01:00",
+    "end": "2026-11-26T23:57:00+01:00",
+    "mean_eur_per_mwh": 236.35,
+    "mean_eur_per_kwh": 0.23635,
+    "starts_in_minutes": 0
+  },
+  "saving_eur_per_kwh": 0.05883,
+  "saving_percent": 24.9,
+  "warnings": [],
+  "sources": [
+    {
+      "name": "Red Eléctrica de España (REData)",
+      "dataset": "prices",
+      "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
+      "updated_at": "2026-11-25T15:09:56+01:00",
+      "fetched_at": "2026-11-26T22:27:54+01:00",
+      "cached": true
+    },
+    {
+      "name": "Red Eléctrica de España (REData)",
+      "dataset": "prices",
+      "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-27T00:00&end_date=2026-11-27T23:59&time_trunc=hour",
+      "updated_at": "2026-11-26T14:51:09+01:00",
+      "fetched_at": "2026-11-26T22:27:55+01:00",
+      "cached": true
+    }
+  ]
+}
