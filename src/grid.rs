@@ -363,11 +363,11 @@ fn co2(env: &Envelope, day: Date) -> Result<f64> {
 }
 
 /// Grams of CO2 equivalent per kWh generated: the day's emissions over the day's
-/// generation. REData publishes this factor as a series of its own (id `MWh`),
-/// but in an answer spanning several days that series can be out of step with the
-/// days it is labelled with (seen on 2026-11-26: each value was another day's
-/// emissions over this day's generation), so it is worked out here from the two
-/// totals, which is how REData defines it.
+/// generation. REData publishes this factor as a series of its own (id `MWh`), but
+/// when the range asked for includes a day on which coal emitted nothing, that series
+/// comes back out of step with its days: each value is another day's emissions over
+/// this day's generation (seen on 2026-11-26; `tests/fixtures/README.md`). So it is
+/// worked out here from the two totals, which is what the series holds when it is right.
 fn intensity(tonnes: f64, generated_mwh: f64) -> Option<f64> {
     // Tonnes per MWh is numerically kilograms per kWh.
     (generated_mwh > 0.0).then(|| round(tonnes / generated_mwh * 1000.0, 1))
