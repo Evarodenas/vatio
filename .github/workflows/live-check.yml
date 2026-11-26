@@ -1,0 +1,112 @@
+name: Live check
+
+# Verification against the live REData API from a GitHub runner. Pushing to the
+# `live-check` branch runs it once and commits what it saw under `live/`: vatio's own
+# output for each command, and raw API answers to replace the transcribed fixtures.
+on:
+  push:
+    branches: [live-check]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked
+
+      - name: Run vatio against the live API
+        run: |
+          mkdir -p live/raw
+          export VATIO_CACHE_DIR="$RUNNER_TEMP/vatio-cache"
+          V=./target/debug/vatio
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > live/started_at.txt
+
+          # JSON form first (up to 4 tries when the failure is network/bot wall,
+          # exit code 4), then the human form, which should come from the cache.
+          run() {
+            local name="$1"; shift
+            local code=0 attempt
+            for attempt in 1 2 3 4; do
+              code=0
+              "$V" "$@" --json > "live/$name.json" 2> "live/$name.stderr" || code=$?
+              [ "$code" != 4 ] && break
+              sleep 8
+            done
+            echo "exit=$code attempts=$attempt" > "live/$name.exit"
+            "$V" "$@" > "live/$name.txt" 2>> "live/$name.stderr" || true
+          }
+
+          run now               now
+          run now_spot          now --market spot
+          run prices_today      prices
+          run prices_tomorrow   prices tomorrow
+          run prices_yesterday  prices yesterday
+          run prices_spot_today prices --market spot
+          run prices_spot_hourly_era prices 2025-06-01 --market spot
+          run prices_25h_day    prices 2026-10-25
+          run prices_23h_day    prices 2026-03-29
+          run cheapest_3h       cheapest 3h
+          run cheapest_2h_by_8  cheapest 2h --until 08:00 --top 3
+          run cheapest_spot_90m cheapest 90m --market spot
+          run grid              grid
+          run prices_far_future prices 2030-01-01
+          ls -la "$VATIO_CACHE_DIR" > live/cache_listing.txt 2>&1 || true
+
+      - name: Capture raw API answers
+        run: |
+          B=https://apidatos.ree.es/es/datos
+          TODAY=$(TZ=Europe/Madrid date +%F)
+          TOMORROW=$(TZ=Europe/Madrid date -d tomorrow +%F)
+          AFTER=$(TZ=Europe/Madrid date -d '2 days' +%F)
+          YESTERDAY=$(TZ=Europe/Madrid date -d yesterday +%F)
+          D4=$(TZ=Europe/Madrid date -d '4 days ago' +%F)
+          D30=$(TZ=Europe/Madrid date -d '30 days ago' +%F)
+
+          # Up to 5 tries; stop as soon as the body is JSON (success or error document).
+          raw() {
+            local name="$1" url="$2"; shift 2
+            local code attempt
+            : > "live/raw/$name.status"
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -sS -m 40 -D "live/raw/$name.headers" -o "live/raw/$name.body" \
+                -w '%{http_code}' -H 'Accept: application/json' "$@" "$url" || echo 000)
+              echo "http=$code attempt=$attempt" >> "live/raw/$name.status"
+              if head -c 1 "live/raw/$name.body" 2>/dev/null | grep -q '[{[]'; then break; fi
+              sleep 6
+            done
+          }
+          P="$B/mercados/precios-mercados-tiempo-real"
+          raw prices_today      "$P?start_date=${TODAY}T00:00&end_date=${TODAY}T23:59&time_trunc=hour"
+          raw prices_tomorrow   "$P?start_date=${TOMORROW}T00:00&end_date=${TOMORROW}T23:59&time_trunc=hour"
+          raw prices_day_after  "$P?start_date=${AFTER}T00:00&end_date=${AFTER}T23:59&time_trunc=hour"
+          raw prices_2030       "$P?start_date=2030-01-01T00:00&end_date=2030-01-01T23:59&time_trunc=hour"
+          raw prices_30_days    "$P?start_date=${D30}T00:00&end_date=${TODAY}T23:59&time_trunc=hour"
+          raw prices_25h_day    "$P?start_date=2026-10-25T00:00&end_date=2026-10-25T23:59&time_trunc=hour"
+          raw demand_today      "$B/demanda/demanda-tiempo-real?start_date=${TODAY}T00:00&end_date=${TODAY}T23:59&time_trunc=hour"
+          raw mix_to_yesterday  "$B/generacion/estructura-generacion?start_date=${D4}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=day"
+          raw mix_to_today      "$B/generacion/estructura-generacion?start_date=${D4}T00:00&end_date=${TODAY}T23:59&time_trunc=day"
+          raw co2_to_yesterday  "$B/generacion/no-renovables-detalle-emisiones-CO2?start_date=${D4}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=day"
+          raw error_bad_trunc   "$B/generacion/estructura-generacion?start_date=${YESTERDAY}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=hour"
+          raw error_bad_widget  "$B/mercados/no-existe?start_date=${YESTERDAY}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=hour"
+          raw error_reversed    "$P?start_date=${TODAY}T00:00&end_date=${YESTERDAY}T23:59&time_trunc=hour"
+          raw cors_probe        "$P?start_date=${TODAY}T00:00&end_date=${TODAY}T23:59&time_trunc=hour" -H 'Origin: https://example.org'
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > live/finished_at.txt
+
+      - name: Commit what was seen
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live
+          git commit -m "Live check: results from the REData API" || echo "nothing to commit"
+          git push
