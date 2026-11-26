@@ -1,0 +1,26 @@
+weather probe ecmwf_ifs025 http 200 {'temperature_2m': 72, 'temperature_2m_previous_day3': 72, 'temperature_2m_previous_day7': 72}
+weather ecmwf_ifs025 wind 2025-01-01 2025-04-02 http 200 values 79488 
+weather ecmwf_ifs025 wind 2025-04-03 2025-07-03 http 200 values 79488 
+weather ecmwf_ifs025 wind 2025-07-04 2025-10-03 http 200 values 79488 
+weather ecmwf_ifs025 wind 2025-10-04 2026-01-03 http 200 values 79488 
+weather ecmwf_ifs025 wind 2026-01-04 2026-04-05 http 200 values 79488 
+weather ecmwf_ifs025 wind 2026-04-06 2026-07-06 http 200 values 79488 
+weather ecmwf_ifs025 wind 2026-07-07 2026-10-06 http 200 values 79488 
+weather ecmwf_ifs025 wind 2026-10-07 2026-11-26 http 200 values 44064 
+weather ecmwf_ifs025 solar 2025-01-01 2025-04-02 http 200 values 66240 
+weather ecmwf_ifs025 solar 2025-04-03 2025-07-03 http 200 values 66240 
+weather ecmwf_ifs025 solar 2025-07-04 2025-10-03 http 200 values 66240 
+weather ecmwf_ifs025 solar 2025-10-04 2026-01-03 http 200 values 66240 
+weather ecmwf_ifs025 solar 2026-01-04 2026-04-05 http 200 values 66240 
+weather ecmwf_ifs025 solar 2026-04-06 2026-07-06 http 200 values 66240 
+weather ecmwf_ifs025 solar 2026-07-07 2026-10-06 http 200 values 66240 
+weather ecmwf_ifs025 solar 2026-10-07 2026-11-26 http 200 values 36720 
+weather ecmwf_ifs025 temp 2025-01-01 2025-04-02 http 200 values 66240 
+weather ecmwf_ifs025 temp 2025-04-03 2025-07-03 http 200 values 66240 
+weather ecmwf_ifs025 temp 2025-07-04 2025-10-03 http 200 values 66240 
+weather ecmwf_ifs025 temp 2025-10-04 2026-01-03 http 200 values 66240 
+weather ecmwf_ifs025 temp 2026-01-04 2026-04-05 http 200 values 66240 
+weather ecmwf_ifs025 temp 2026-04-06 2026-07-06 http 200 values 66240 
+weather ecmwf_ifs025 temp 2026-07-07 2026-10-06 http 200 values 66240 
+weather ecmwf_ifs025 temp 2026-10-07 2026-11-26 http 200 values 36720 
+weather_ecmwf_ifs025 hours: 16680
