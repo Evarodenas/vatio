@@ -341,7 +341,8 @@ pub struct Generation {
     /// Share of generation from renewable sources, 0 to 100. Null when the answer
     /// does not classify every technology (see `warnings`).
     pub renewable_percent: Option<f64>,
-    /// Average emissions per unit generated, in grams of CO2 equivalent per kWh.
+    /// Average emissions per unit generated, in grams of CO2 equivalent per kWh:
+    /// `co2_tonnes` over `total_mwh`.
     pub co2_g_per_kwh: Option<f64>,
     /// Total emissions from generation over the day, in tonnes of CO2 equivalent.
     pub co2_tonnes: Option<f64>,
