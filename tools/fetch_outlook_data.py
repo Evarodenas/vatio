@@ -30,21 +30,24 @@ SITES = {
 VARIABLE = {"wind": "wind_speed_100m", "solar": "shortwave_radiation", "temp": "temperature_2m"}
 # 0 = the run current at the time; N = what was forecast N*24 h before the hour in question.
 OFFSETS = [0, 3, 4, 5, 6, 7]
-MODELS = ["ecmwf_ifs025", "gfs_seamless"]
+MODELS = ["ecmwf_ifs025"]     # each archive request takes about a minute; one global model is enough to start
 
-LOG = []
+LOG_PATH = None
 def log(*parts):
+    """Print and append to the log file straight away, so a run that is cut short still explains itself."""
     line = " ".join(str(p) for p in parts)
     print(line, flush=True)
-    LOG.append(line)
+    if LOG_PATH:
+        with open(LOG_PATH, "a") as f:
+            f.write(line + "\n")
 
-def get_json(url, tries=4, pause=6.0):
+def get_json(url, tries=3, pause=5.0):
     """GET and parse JSON. Returns (status, document or None, first bytes of the body)."""
     status, body = 0, b""
     for attempt in range(1, tries + 1):
         try:
             req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=120) as res:
+            with urllib.request.urlopen(req, timeout=60) as res:
                 status, body = res.status, res.read()
         except urllib.error.HTTPError as e:
             status, body = e.code, e.read()
@@ -58,7 +61,8 @@ def get_json(url, tries=4, pause=6.0):
             return status, doc, body[:300]
         if status in (400, 404) and doc is not None:
             return status, doc, body[:300]          # a definite answer; retrying will not change it
-        time.sleep(65 if status == 429 else pause * attempt)
+        if attempt < tries:
+            time.sleep(61 if status == 429 else pause * attempt)
     return status, None, body[:300]
 
 def month_ranges(start, end):
@@ -136,8 +140,29 @@ def fetch_daily(out, start, end, widget, filename, label):
 
 # ---------------------------------------------------------------- Open-Meteo
 
+def write_weather(out, model, columns, data):
+    with gzip.open(f"{out}/weather_{model}.csv.gz", "wt", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["time_utc", *columns])
+        for t in sorted(data):
+            w.writerow([t, *(f"{data[t][c]:.1f}" if c in data[t] else "" for c in columns)])
+
+def probe_weather(model):
+    """One small request, logged in full, so a refusal is understood before the long loop."""
+    q = urllib.parse.urlencode({"latitude": 40.42, "longitude": -3.70, "models": model, "timezone": "GMT",
+                                "hourly": "temperature_2m,temperature_2m_previous_day3,temperature_2m_previous_day7",
+                                "start_date": "2025-01-01", "end_date": "2025-01-03"}, safe=",")
+    status, doc, head = get_json(f"{OPEN_METEO}?{q}", tries=1)
+    ok = status == 200 and isinstance(doc, dict) and "hourly" in doc
+    filled = {k: sum(v is not None for v in vals) for k, vals in doc["hourly"].items() if k != "time"} if ok else {}
+    log("weather probe", model, "http", status, filled if ok else head)
+    return ok
+
 def fetch_weather(out, start, end, model):
     columns, data = [], defaultdict(dict)        # data[time_utc][column] = value
+    if not probe_weather(model):
+        return 0
+    failures = 0
     for group, sites in SITES.items():
         base = VARIABLE[group]
         names = [base if n == 0 else f"{base}_previous_day{n}" for n in OFFSETS]
@@ -162,18 +187,21 @@ def fetch_weather(out, start, end, model):
                                 data[t][f"{group}_{site}_d{n}"] = v
                                 filled += 1
             log("weather", model, group, a, b, "http", status, "values", filled, "" if filled else head)
+            failures = 0 if filled else failures + 1
+            if failures >= 3:
+                log("weather", model, "giving up after three refusals in a row")
+                break
             time.sleep(6)                         # stay well inside the free tier's per-minute allowance
-    if not data:
-        return 0
-    with gzip.open(f"{out}/weather_{model}.csv.gz", "wt", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["time_utc", *columns])
-        for t in sorted(data):
-            w.writerow([t, *(f"{data[t][c]:.1f}" if c in data[t] else "" for c in columns)])
+        if data:
+            write_weather(out, model, columns, data)   # keep what there is, group by group
+        if failures >= 3:
+            break
     return len(data)
 
 def main():
+    global LOG_PATH
     out, start, end = sys.argv[1], date.fromisoformat(sys.argv[2]), date.fromisoformat(sys.argv[3])
+    LOG_PATH = f"{out}/fetch_log.txt"
     only = sys.argv[4].split(",") if len(sys.argv) > 4 else ["prices", "mix", "demand", "weather"]
     if "prices" in only:
         log("prices_hourly rows:", fetch_prices(out, start, end))
@@ -184,8 +212,6 @@ def main():
     if "weather" in only:
         for model in MODELS:
             log(f"weather_{model} hours:", fetch_weather(out, start, end, model))
-    with open(f"{out}/fetch_log.txt", "a") as f:
-        f.write("\n".join(LOG) + "\n")
 
 if __name__ == "__main__":
     main()
