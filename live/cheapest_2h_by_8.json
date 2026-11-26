@@ -5,7 +5,7 @@
   "timezone": "Europe/Madrid",
   "duration_minutes": 120,
   "searched": {
-    "from": "2026-11-26T22:27:00+01:00",
+    "from": "2026-11-26T22:39:00+01:00",
     "until": "2026-11-27T08:00:00+01:00",
     "tomorrow": "included"
   },
@@ -14,7 +14,7 @@
     "end": "2026-11-27T06:00:00+01:00",
     "mean_eur_per_mwh": 190.07,
     "mean_eur_per_kwh": 0.19007,
-    "starts_in_minutes": 333
+    "starts_in_minutes": 321
   },
   "alternatives": [
     {
@@ -22,25 +22,25 @@
       "end": "2026-11-27T04:00:00+01:00",
       "mean_eur_per_mwh": 196.42,
       "mean_eur_per_kwh": 0.19642,
-      "starts_in_minutes": 213
+      "starts_in_minutes": 201
     },
     {
       "start": "2026-11-27T00:00:00+01:00",
       "end": "2026-11-27T02:00:00+01:00",
       "mean_eur_per_mwh": 205.05,
       "mean_eur_per_kwh": 0.20504,
-      "starts_in_minutes": 93
+      "starts_in_minutes": 81
     }
   ],
   "earliest": {
-    "start": "2026-11-26T22:27:00+01:00",
-    "end": "2026-11-27T00:27:00+01:00",
-    "mean_eur_per_mwh": 278.29,
-    "mean_eur_per_kwh": 0.27829,
+    "start": "2026-11-26T22:39:00+01:00",
+    "end": "2026-11-27T00:39:00+01:00",
+    "mean_eur_per_mwh": 267.83,
+    "mean_eur_per_kwh": 0.26783,
     "starts_in_minutes": 0
   },
-  "saving_eur_per_kwh": 0.08822,
-  "saving_percent": 31.7,
+  "saving_eur_per_kwh": 0.07776,
+  "saving_percent": 29.0,
   "warnings": [],
   "sources": [
     {
@@ -48,7 +48,7 @@
       "dataset": "prices",
       "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
       "updated_at": "2026-11-25T20:46:01+01:00",
-      "fetched_at": "2026-11-26T22:27:54+01:00",
+      "fetched_at": "2026-11-26T22:39:16+01:00",
       "cached": true
     },
     {
@@ -56,7 +56,7 @@
       "dataset": "prices",
       "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-27T00:00&end_date=2026-11-27T23:59&time_trunc=hour",
       "updated_at": "2026-11-26T20:46:05+01:00",
-      "fetched_at": "2026-11-26T22:27:55+01:00",
+      "fetched_at": "2026-11-26T22:39:16+01:00",
       "cached": true
     }
   ]

@@ -174,7 +174,7 @@
       "dataset": "prices",
       "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-25T00:00&end_date=2026-11-25T23:59&time_trunc=hour",
       "updated_at": "2026-11-24T20:46:06+01:00",
-      "fetched_at": "2026-11-26T22:27:56+01:00",
+      "fetched_at": "2026-11-26T22:39:17+01:00",
       "cached": false
     }
   ]

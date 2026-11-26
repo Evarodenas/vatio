@@ -1,7 +1,7 @@
-Day-ahead spot now · Thu 26 Nov 22:27 · €/MWh, wholesale
+Day-ahead spot now · Thu 26 Nov 22:39 · €/MWh, wholesale
 
-  257.66 €/MWh  high for today  (81 of 96, 1 = cheapest; until 22:30)
-  next 22:30  245.00 ↓
+  245.00 €/MWh  high for today  (75 of 96, 1 = cheapest; until 22:45)
+  next 22:45  239.90 ↓
 
   today: min 110.00 at 12:15  ·  mean 194.35  ·  max 283.02 at 20:30
   Source: Red Eléctrica de España (REData) · updated Wed 25 Nov 15:09

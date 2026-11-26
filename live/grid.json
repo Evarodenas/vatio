@@ -1,12 +1,12 @@
 {
   "schema": "vatio.grid/v1",
   "area": "spain",
-  "at": "2026-11-26T22:27:59+01:00",
+  "at": "2026-11-26T22:39:21+01:00",
   "timezone": "Europe/Madrid",
   "demand": {
-    "at": "2026-11-26T22:15:00+01:00",
-    "actual_mw": 35006.0,
-    "forecast_mw": 35037.0,
+    "at": "2026-11-26T22:25:00+01:00",
+    "actual_mw": 34488.0,
+    "forecast_mw": 34391.0,
     "scheduled_mw": 34445.0,
     "resolution_minutes": 5,
     "peak_today": {
@@ -22,8 +22,8 @@
     "day": "2026-11-25",
     "total_mwh": 892181.3,
     "renewable_percent": 66.3,
-    "co2_g_per_kwh": null,
-    "co2_tonnes": null,
+    "co2_g_per_kwh": 75.6,
+    "co2_tonnes": 67445.0,
     "technologies": [
       {
         "id": "wind",
@@ -139,16 +139,14 @@
       }
     ]
   },
-  "warnings": [
-    "emissions figures are unavailable: REData answered HTTP 200 with a body this version cannot read"
-  ],
+  "warnings": [],
   "sources": [
     {
       "name": "Red Eléctrica de España (REData)",
       "dataset": "demand",
       "url": "https://apidatos.ree.es/es/datos/demanda/demanda-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
-      "updated_at": "2026-11-26T22:22:05+01:00",
-      "fetched_at": "2026-11-26T22:27:59+01:00",
+      "updated_at": "2026-11-26T22:32:05+01:00",
+      "fetched_at": "2026-11-26T22:39:21+01:00",
       "cached": false
     },
     {
@@ -156,7 +154,15 @@
       "dataset": "generation",
       "url": "https://apidatos.ree.es/es/datos/generacion/estructura-generacion?start_date=2026-11-22T00:00&end_date=2026-11-25T23:59&time_trunc=day",
       "updated_at": "2026-11-26T08:26:36+01:00",
-      "fetched_at": "2026-11-26T22:27:59+01:00",
+      "fetched_at": "2026-11-26T22:39:21+01:00",
+      "cached": false
+    },
+    {
+      "name": "Red Eléctrica de España (REData)",
+      "dataset": "emissions",
+      "url": "https://apidatos.ree.es/es/datos/generacion/no-renovables-detalle-emisiones-CO2?start_date=2026-11-22T00:00&end_date=2026-11-25T23:59&time_trunc=day",
+      "updated_at": "2026-11-26T08:26:36+01:00",
+      "fetched_at": "2026-11-26T22:39:21+01:00",
       "cached": false
     }
   ]

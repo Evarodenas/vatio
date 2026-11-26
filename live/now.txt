@@ -1,4 +1,4 @@
-PVPC now · Thu 26 Nov 22:27 · €/kWh, energy term before taxes
+PVPC now · Thu 26 Nov 22:39 · €/kWh, energy term before taxes
 
   0.31845 €/kWh  high for today  (20 of 24, 1 = cheapest; until 23:00)
   next 23:00  0.28518 ↓

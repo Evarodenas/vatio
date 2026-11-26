@@ -2,7 +2,7 @@
   "schema": "vatio.now/v1",
   "market": "pvpc",
   "area": "peninsula",
-  "at": "2026-11-26T22:27:54+01:00",
+  "at": "2026-11-26T22:39:16+01:00",
   "timezone": "Europe/Madrid",
   "current": {
     "start": "2026-11-26T22:00:00+01:00",
@@ -41,7 +41,7 @@
       "dataset": "prices",
       "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
       "updated_at": "2026-11-25T20:46:01+01:00",
-      "fetched_at": "2026-11-26T22:27:54+01:00",
+      "fetched_at": "2026-11-26T22:39:16+01:00",
       "cached": false
     }
   ]
