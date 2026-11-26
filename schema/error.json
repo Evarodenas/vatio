@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "ErrorBody": {
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "hint": {
+          "description": "What to do about it, when there is something specific to say.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "description": "True when the same request may succeed later.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "hint",
+        "retryable"
+      ],
+      "type": "object"
+    },
+    "ErrorCode": {
+      "description": "What kind of failure it was. Part of the output contract.",
+      "oneOf": [
+        {
+          "const": "usage",
+          "description": "The request is wrong; fix the arguments.",
+          "type": "string"
+        },
+        {
+          "const": "not_available",
+          "description": "The data is not published, yet or at all.",
+          "type": "string"
+        },
+        {
+          "const": "network",
+          "description": "The data service could not be reached.",
+          "type": "string"
+        },
+        {
+          "const": "upstream",
+          "description": "The data service answered with an error or something unreadable.",
+          "type": "string"
+        },
+        {
+          "const": "blocked",
+          "description": "The data service's bot protection refused a valid request.",
+          "type": "string"
+        },
+        {
+          "const": "internal",
+          "description": "A bug in this program.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The JSON error object written to stderr under `--json`.",
+  "properties": {
+    "error": {
+      "$ref": "#/$defs/ErrorBody"
+    }
+  },
+  "required": [
+    "error"
+  ],
+  "title": "ErrorReport",
+  "type": "object"
+}

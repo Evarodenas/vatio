@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "Dataset": {
+      "description": "What one upstream request supplied.",
+      "enum": [
+        "prices",
+        "demand",
+        "generation",
+        "emissions"
+      ],
+      "type": "string"
+    },
+    "Market": {
+      "description": "Which price series to use.",
+      "oneOf": [
+        {
+          "const": "pvpc",
+          "description": "PVPC 2.0TD: the energy term of the regulated household tariff. It carries the\ncost of energy and the energy share of tolls and charges; taxes come on top. Hourly.",
+          "type": "string"
+        },
+        {
+          "const": "spot",
+          "description": "Day-ahead wholesale market price for the Spanish zone. Quarter-hourly.",
+          "type": "string"
+        }
+      ]
+    },
+    "PricePoint": {
+      "description": "One priced interval `[start, end)`.",
+      "properties": {
+        "end": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "eur_per_kwh": {
+          "description": "The same price in euros per kilowatt-hour.",
+          "format": "double",
+          "type": "number"
+        },
+        "eur_per_mwh": {
+          "description": "Price as published, in euros per megawatt-hour.",
+          "format": "double",
+          "type": "number"
+        },
+        "start": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "eur_per_mwh",
+        "eur_per_kwh"
+      ],
+      "type": "object"
+    },
+    "PriceStats": {
+      "description": "Summary of a set of price points.",
+      "properties": {
+        "max": {
+          "$ref": "#/$defs/PricePoint",
+          "description": "Most expensive interval (the earliest one on ties)."
+        },
+        "mean_eur_per_kwh": {
+          "format": "double",
+          "type": "number"
+        },
+        "mean_eur_per_mwh": {
+          "description": "Time-weighted mean.",
+          "format": "double",
+          "type": "number"
+        },
+        "min": {
+          "$ref": "#/$defs/PricePoint",
+          "description": "Cheapest interval (the earliest one on ties)."
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "mean_eur_per_mwh",
+        "mean_eur_per_kwh"
+      ],
+      "type": "object"
+    },
+    "Source": {
+      "description": "Where a document's data came from. Every document lists its sources.",
+      "properties": {
+        "cached": {
+          "description": "True when served from the local cache instead of the network.",
+          "type": "boolean"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Dataset"
+        },
+        "fetched_at": {
+          "description": "When this program retrieved it from upstream.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Publisher of the data. Cite it when you reuse a figure.",
+          "type": "string"
+        },
+        "updated_at": {
+          "description": "When the publisher last updated this data. Cite it along with the name.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The upstream request that produced it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dataset",
+        "url",
+        "updated_at",
+        "fetched_at",
+        "cached"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Prices for one Europe/Madrid calendar day.",
+  "properties": {
+    "area": {
+      "const": "peninsula",
+      "description": "Always `peninsula`: prices are those of the mainland (peninsular) system.",
+      "type": "string"
+    },
+    "complete": {
+      "description": "True when the points cover the whole day (23, 24 or 25 hours).",
+      "type": "boolean"
+    },
+    "day": {
+      "description": "Calendar day, `YYYY-MM-DD`.",
+      "type": "string"
+    },
+    "market": {
+      "$ref": "#/$defs/Market"
+    },
+    "points": {
+      "items": {
+        "$ref": "#/$defs/PricePoint"
+      },
+      "type": "array"
+    },
+    "resolution_minutes": {
+      "description": "Length of each interval in minutes: 60 for PVPC; 15 for spot (60 for spot days\nbefore October 2025, when that market was hourly).",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema": {
+      "const": "vatio.prices/v1",
+      "description": "Always `vatio.prices/v1`.",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "type": "array"
+    },
+    "stats": {
+      "$ref": "#/$defs/PriceStats"
+    },
+    "timezone": {
+      "const": "Europe/Madrid",
+      "description": "Always `Europe/Madrid`.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "market",
+    "area",
+    "day",
+    "timezone",
+    "resolution_minutes",
+    "complete",
+    "points",
+    "stats",
+    "sources"
+  ],
+  "title": "Prices",
+  "type": "object"
+}

@@ -1,0 +1,301 @@
+{
+  "$defs": {
+    "Dataset": {
+      "description": "What one upstream request supplied.",
+      "enum": [
+        "prices",
+        "demand",
+        "generation",
+        "emissions"
+      ],
+      "type": "string"
+    },
+    "Demand": {
+      "description": "Electricity demand, measured in near real time.",
+      "properties": {
+        "actual_mw": {
+          "description": "Measured demand at `at`, in megawatts.",
+          "format": "double",
+          "type": "number"
+        },
+        "at": {
+          "description": "Instant of the latest measured value. Usually about 10 minutes behind the clock.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "forecast_mw": {
+          "description": "What the operator had forecast for the same instant.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "low_today": {
+          "$ref": "#/$defs/DemandReading",
+          "description": "Lowest measured demand so far today."
+        },
+        "peak_today": {
+          "$ref": "#/$defs/DemandReading",
+          "description": "Highest measured demand so far today."
+        },
+        "resolution_minutes": {
+          "description": "Spacing of the readings in minutes. Null when only one reading exists yet.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "scheduled_mw": {
+          "description": "What the market had scheduled for the same instant.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "at",
+        "actual_mw",
+        "forecast_mw",
+        "scheduled_mw",
+        "resolution_minutes",
+        "peak_today",
+        "low_today"
+      ],
+      "type": "object"
+    },
+    "DemandReading": {
+      "description": "One demand reading.",
+      "properties": {
+        "at": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "mw": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "at",
+        "mw"
+      ],
+      "type": "object"
+    },
+    "Generation": {
+      "description": "Generation mix for one day. Red Eléctrica publishes this per day, not live, and\nrevises recent days for a while, so treat the latest figures as provisional.",
+      "properties": {
+        "co2_g_per_kwh": {
+          "description": "Average emissions per unit generated, in grams of CO2 equivalent per kWh.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "co2_tonnes": {
+          "description": "Total emissions from generation over the day, in tonnes of CO2 equivalent.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "day": {
+          "description": "The day these figures cover, `YYYY-MM-DD`: the most recent completed day published.",
+          "type": "string"
+        },
+        "renewable_percent": {
+          "description": "Share of generation from renewable sources, 0 to 100. Null when the answer\ndoes not classify every technology (see `warnings`).",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "technologies": {
+          "description": "Technologies by output, largest first.",
+          "items": {
+            "$ref": "#/$defs/Technology"
+          },
+          "type": "array"
+        },
+        "total_mwh": {
+          "description": "Total generation over the day, in megawatt-hours.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "day",
+        "total_mwh",
+        "renewable_percent",
+        "co2_g_per_kwh",
+        "co2_tonnes",
+        "technologies"
+      ],
+      "type": "object"
+    },
+    "Source": {
+      "description": "Where a document's data came from. Every document lists its sources.",
+      "properties": {
+        "cached": {
+          "description": "True when served from the local cache instead of the network.",
+          "type": "boolean"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Dataset"
+        },
+        "fetched_at": {
+          "description": "When this program retrieved it from upstream.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Publisher of the data. Cite it when you reuse a figure.",
+          "type": "string"
+        },
+        "updated_at": {
+          "description": "When the publisher last updated this data. Cite it along with the name.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The upstream request that produced it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dataset",
+        "url",
+        "updated_at",
+        "fetched_at",
+        "cached"
+      ],
+      "type": "object"
+    },
+    "Technology": {
+      "description": "One generation technology's output over a day.",
+      "properties": {
+        "id": {
+          "description": "Identifier for the technology, for example `wind`, `solar_pv`, `nuclear`,\n`combined_cycle`. Known technologies keep theirs; one this version does not know\ngets an identifier derived from its Spanish name.",
+          "type": "string"
+        },
+        "mwh": {
+          "description": "Energy generated over the day, in megawatt-hours.",
+          "format": "double",
+          "type": "number"
+        },
+        "name": {
+          "description": "English display name.",
+          "type": "string"
+        },
+        "name_es": {
+          "description": "Name as published by Red Eléctrica (Spanish).",
+          "type": "string"
+        },
+        "percent": {
+          "description": "Share of the day's total generation, 0 to 100.",
+          "format": "double",
+          "type": "number"
+        },
+        "renewable": {
+          "description": "Null when Red Eléctrica's answer does not classify the technology.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "name_es",
+        "renewable",
+        "mwh",
+        "percent"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The state of Spain's electricity system: live demand plus the latest daily mix.",
+  "properties": {
+    "area": {
+      "const": "spain",
+      "description": "Always `spain`: demand and generation are national totals (mainland and islands).",
+      "type": "string"
+    },
+    "at": {
+      "description": "The instant this answer was produced.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "demand": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Demand"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Null when the demand feed could not be read (see `warnings`)."
+    },
+    "generation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Generation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Null when the generation figures could not be read (see `warnings`)."
+    },
+    "schema": {
+      "const": "vatio.grid/v1",
+      "description": "Always `vatio.grid/v1`.",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "type": "array"
+    },
+    "timezone": {
+      "const": "Europe/Madrid",
+      "description": "Always `Europe/Madrid`.",
+      "type": "string"
+    },
+    "warnings": {
+      "description": "Parts of the answer that are missing, and why. Empty when complete.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "area",
+    "at",
+    "timezone",
+    "demand",
+    "generation",
+    "warnings",
+    "sources"
+  ],
+  "title": "Grid",
+  "type": "object"
+}

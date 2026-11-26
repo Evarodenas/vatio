@@ -1,0 +1,201 @@
+{
+  "data": {
+    "type": "Demanda nacional en tiempo real",
+    "id": "dem15",
+    "attributes": {
+      "title": "Demanda nacional en tiempo real",
+      "last-update": "2026-11-26T20:12:05.000+01:00",
+      "description": null
+    },
+    "meta": {
+      "cache-control": {
+        "cache": "MISS"
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "Prevista",
+      "id": "2052",
+      "groupId": null,
+      "attributes": {
+        "title": "Prevista",
+        "description": "Demanda prevista",
+        "color": "#41d641",
+        "icon": null,
+        "type": null,
+        "magnitude": null,
+        "composite": false,
+        "last-update": "2026-11-26T20:12:05.000+01:00",
+        "values": [
+          {
+            "value": 38723,
+            "percentage": 0.2508388718307487,
+            "datetime": "2026-11-26T20:00:00.000+01:00"
+          },
+          {
+            "value": 38792,
+            "percentage": 0.25138028461079864,
+            "datetime": "2026-11-26T20:05:00.000+01:00"
+          },
+          {
+            "value": 38836,
+            "percentage": 0.33450761849800603,
+            "datetime": "2026-11-26T20:10:00.000+01:00"
+          },
+          {
+            "value": 38858,
+            "percentage": 0.34580096288188233,
+            "datetime": "2026-11-26T20:15:00.000+01:00"
+          },
+          {
+            "value": 38865,
+            "percentage": 0.34584171279075976,
+            "datetime": "2026-11-26T20:20:00.000+01:00"
+          },
+          {
+            "value": 38868,
+            "percentage": 0.3458591754834002,
+            "datetime": "2026-11-26T20:25:00.000+01:00"
+          },
+          {
+            "value": 38868,
+            "percentage": 0.3462165412194362,
+            "datetime": "2026-11-26T20:30:00.000+01:00"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Programada",
+      "id": "2053",
+      "groupId": null,
+      "attributes": {
+        "title": "Programada",
+        "description": "Demanda programada",
+        "color": "#e90b0b",
+        "icon": null,
+        "type": null,
+        "magnitude": null,
+        "composite": false,
+        "last-update": "2026-11-26T20:12:05.000+01:00",
+        "values": [
+          {
+            "value": 38662,
+            "percentage": 0.25044372757070493,
+            "datetime": "2026-11-26T20:00:00.000+01:00"
+          },
+          {
+            "value": 38662,
+            "percentage": 0.2505378573835506,
+            "datetime": "2026-11-26T20:05:00.000+01:00"
+          },
+          {
+            "value": 38662,
+            "percentage": 0.33300889757879054,
+            "datetime": "2026-11-26T20:10:00.000+01:00"
+          },
+          {
+            "value": 36787,
+            "percentage": 0.3273709409011222,
+            "datetime": "2026-11-26T20:15:00.000+01:00"
+          },
+          {
+            "value": 36787,
+            "percentage": 0.32735054903984767,
+            "datetime": "2026-11-26T20:20:00.000+01:00"
+          },
+          {
+            "value": 36787,
+            "percentage": 0.3273418104483854,
+            "datetime": "2026-11-26T20:25:00.000+01:00"
+          },
+          {
+            "value": 36729,
+            "percentage": 0.3271634080078386,
+            "datetime": "2026-11-26T20:30:00.000+01:00"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Real",
+      "id": "2037",
+      "groupId": null,
+      "attributes": {
+        "title": "Real",
+        "description": "Demanda real",
+        "color": "#ffea00",
+        "icon": null,
+        "type": null,
+        "magnitude": null,
+        "composite": false,
+        "last-update": "2026-11-26T20:12:05.000+01:00",
+        "values": [
+          {
+            "value": 38388,
+            "percentage": 0.24866881728788526,
+            "datetime": "2026-11-26T20:00:00.000+01:00"
+          },
+          {
+            "value": 38261,
+            "percentage": 0.2479392933979626,
+            "datetime": "2026-11-26T20:05:00.000+01:00"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Programada total",
+      "id": "2054",
+      "groupId": null,
+      "attributes": {
+        "title": "Programada total",
+        "description": "Demanda programada total",
+        "color": "#ff8f40",
+        "icon": null,
+        "type": null,
+        "magnitude": null,
+        "composite": false,
+        "last-update": "2026-11-26T20:12:04.000+01:00",
+        "values": [
+          {
+            "value": 38601,
+            "percentage": 0.2500485833106611,
+            "datetime": "2026-11-26T20:00:00.000+01:00"
+          },
+          {
+            "value": 38601,
+            "percentage": 0.25014256460768813,
+            "datetime": "2026-11-26T20:05:00.000+01:00"
+          },
+          {
+            "value": 38601,
+            "percentage": 0.3324834839232035,
+            "datetime": "2026-11-26T20:10:00.000+01:00"
+          },
+          {
+            "value": 36726,
+            "percentage": 0.3268280962169955,
+            "datetime": "2026-11-26T20:15:00.000+01:00"
+          },
+          {
+            "value": 36726,
+            "percentage": 0.32680773816939257,
+            "datetime": "2026-11-26T20:20:00.000+01:00"
+          },
+          {
+            "value": 36726,
+            "percentage": 0.3267990140682144,
+            "datetime": "2026-11-26T20:25:00.000+01:00"
+          },
+          {
+            "value": 36668,
+            "percentage": 0.32662005077272527,
+            "datetime": "2026-11-26T20:30:00.000+01:00"
+          }
+        ]
+      }
+    }
+  ]
+}

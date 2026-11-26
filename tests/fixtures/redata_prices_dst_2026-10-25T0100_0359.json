@@ -1,0 +1,150 @@
+{
+  "data": {
+    "type": "Precios mercado peninsular en tiempo real",
+    "id": "mer13",
+    "attributes": {
+      "title": "Precios mercado peninsular en tiempo real",
+      "last-update": "2026-10-24T20:46:05.000+02:00",
+      "description": null
+    },
+    "meta": {
+      "cache-control": {
+        "cache": "MISS"
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "PVPC",
+      "id": "1001",
+      "groupId": null,
+      "attributes": {
+        "title": "PVPC",
+        "description": null,
+        "color": "#ffcf09",
+        "type": null,
+        "magnitude": "price",
+        "composite": false,
+        "last-update": "2026-10-24T20:46:05.000+02:00",
+        "values": [
+          {
+            "value": 233.96,
+            "percentage": 0.5729258497404252,
+            "datetime": "2026-10-25T01:00:00.000+02:00"
+          },
+          {
+            "value": 226.3,
+            "percentage": 0.5935893400482636,
+            "datetime": "2026-10-25T02:00:00.000+02:00"
+          },
+          {
+            "value": 212.01,
+            "percentage": 0.5984925474254742,
+            "datetime": "2026-10-25T02:00:00.000+01:00"
+          },
+          {
+            "value": 190.29,
+            "percentage": 0.6132650101517936,
+            "datetime": "2026-10-25T03:00:00.000+01:00"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Precio mercado spot",
+      "id": "600",
+      "groupId": null,
+      "attributes": {
+        "title": "Precio mercado spot",
+        "description": null,
+        "color": "#df4a32",
+        "type": null,
+        "magnitude": "price",
+        "composite": false,
+        "last-update": "2026-10-24T15:35:55.000+02:00",
+        "values": [
+          {
+            "value": 174.4,
+            "percentage": 0.4270741502595749,
+            "datetime": "2026-10-25T01:00:00.000+02:00"
+          },
+          {
+            "value": 158.08,
+            "percentage": 1,
+            "datetime": "2026-10-25T01:15:00.000+02:00"
+          },
+          {
+            "value": 155.2,
+            "percentage": 1,
+            "datetime": "2026-10-25T01:30:00.000+02:00"
+          },
+          {
+            "value": 155.07,
+            "percentage": 1,
+            "datetime": "2026-10-25T01:45:00.000+02:00"
+          },
+          {
+            "value": 154.94,
+            "percentage": 0.4064106599517364,
+            "datetime": "2026-10-25T02:00:00.000+02:00"
+          },
+          {
+            "value": 154.68,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:15:00.000+02:00"
+          },
+          {
+            "value": 154,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:30:00.000+02:00"
+          },
+          {
+            "value": 142.45,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:45:00.000+02:00"
+          },
+          {
+            "value": 142.23,
+            "percentage": 0.4015074525745257,
+            "datetime": "2026-10-25T02:00:00.000+01:00"
+          },
+          {
+            "value": 139.6,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:15:00.000+01:00"
+          },
+          {
+            "value": 130.59,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:30:00.000+01:00"
+          },
+          {
+            "value": 120.6,
+            "percentage": 1,
+            "datetime": "2026-10-25T02:45:00.000+01:00"
+          },
+          {
+            "value": 120,
+            "percentage": 0.3867349898482066,
+            "datetime": "2026-10-25T03:00:00.000+01:00"
+          },
+          {
+            "value": 119.1,
+            "percentage": 1,
+            "datetime": "2026-10-25T03:15:00.000+01:00"
+          },
+          {
+            "value": 110.1,
+            "percentage": 1,
+            "datetime": "2026-10-25T03:30:00.000+01:00"
+          },
+          {
+            "value": 105,
+            "percentage": 1,
+            "datetime": "2026-10-25T03:45:00.000+01:00"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "Dataset": {
+      "description": "What one upstream request supplied.",
+      "enum": [
+        "prices",
+        "demand",
+        "generation",
+        "emissions"
+      ],
+      "type": "string"
+    },
+    "Market": {
+      "description": "Which price series to use.",
+      "oneOf": [
+        {
+          "const": "pvpc",
+          "description": "PVPC 2.0TD: the energy term of the regulated household tariff. It carries the\ncost of energy and the energy share of tolls and charges; taxes come on top. Hourly.",
+          "type": "string"
+        },
+        {
+          "const": "spot",
+          "description": "Day-ahead wholesale market price for the Spanish zone. Quarter-hourly.",
+          "type": "string"
+        }
+      ]
+    },
+    "PriceWindow": {
+      "description": "A candidate run window `[start, end)` and what energy costs on average inside it.",
+      "properties": {
+        "end": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "mean_eur_per_kwh": {
+          "format": "double",
+          "type": "number"
+        },
+        "mean_eur_per_mwh": {
+          "description": "Time-weighted mean price over the window.",
+          "format": "double",
+          "type": "number"
+        },
+        "start": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "starts_in_minutes": {
+          "description": "Minutes from now until this window begins (0 = start immediately).",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "mean_eur_per_mwh",
+        "mean_eur_per_kwh",
+        "starts_in_minutes"
+      ],
+      "type": "object"
+    },
+    "SearchSpan": {
+      "description": "The time span that was searched.",
+      "properties": {
+        "from": {
+          "description": "Earliest allowed start.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "tomorrow": {
+          "$ref": "#/$defs/Tomorrow"
+        },
+        "until": {
+          "description": "Latest allowed finish: the deadline, or the end of published prices if sooner.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "until",
+        "tomorrow"
+      ],
+      "type": "object"
+    },
+    "Source": {
+      "description": "Where a document's data came from. Every document lists its sources.",
+      "properties": {
+        "cached": {
+          "description": "True when served from the local cache instead of the network.",
+          "type": "boolean"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Dataset"
+        },
+        "fetched_at": {
+          "description": "When this program retrieved it from upstream.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Publisher of the data. Cite it when you reuse a figure.",
+          "type": "string"
+        },
+        "updated_at": {
+          "description": "When the publisher last updated this data. Cite it along with the name.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The upstream request that produced it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dataset",
+        "url",
+        "updated_at",
+        "fetched_at",
+        "cached"
+      ],
+      "type": "object"
+    },
+    "Tomorrow": {
+      "description": "What part tomorrow's prices played in a search.",
+      "oneOf": [
+        {
+          "const": "included",
+          "description": "Published and part of the search.",
+          "type": "string"
+        },
+        {
+          "const": "not_published",
+          "description": "The search reached into tomorrow but its prices are not out yet. Asking again\nafter publication may find a cheaper window.",
+          "type": "string"
+        },
+        {
+          "const": "unavailable",
+          "description": "The search reached into tomorrow but its prices could not be checked (see `warnings`).",
+          "type": "string"
+        },
+        {
+          "const": "not_needed",
+          "description": "The search ended today, so tomorrow did not matter.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The cheapest time to run something for a fixed duration.",
+  "properties": {
+    "alternatives": {
+      "description": "Further windows, each the cheapest that overlaps none of the ones before it.",
+      "items": {
+        "$ref": "#/$defs/PriceWindow"
+      },
+      "type": "array"
+    },
+    "area": {
+      "const": "peninsula",
+      "description": "Always `peninsula`.",
+      "type": "string"
+    },
+    "best": {
+      "$ref": "#/$defs/PriceWindow",
+      "description": "The cheapest window."
+    },
+    "duration_minutes": {
+      "format": "int64",
+      "type": "integer"
+    },
+    "earliest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PriceWindow"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "For comparison: the window that starts at the earliest allowed moment,\n`searched.from`, which is now unless a later start was asked for. Null when\npublished prices do not cover a full run from that moment."
+    },
+    "market": {
+      "$ref": "#/$defs/Market"
+    },
+    "saving_eur_per_kwh": {
+      "description": "`earliest` mean minus `best` mean, in euros per kWh. Null without `earliest`.",
+      "format": "double",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "saving_percent": {
+      "description": "The same saving as a percentage of the `earliest` mean. Null when either mean\nis zero or negative, where a percentage is meaningless.",
+      "format": "double",
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "schema": {
+      "const": "vatio.cheapest/v1",
+      "description": "Always `vatio.cheapest/v1`.",
+      "type": "string"
+    },
+    "searched": {
+      "$ref": "#/$defs/SearchSpan"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "type": "array"
+    },
+    "timezone": {
+      "const": "Europe/Madrid",
+      "description": "Always `Europe/Madrid`.",
+      "type": "string"
+    },
+    "warnings": {
+      "description": "Things that limited the answer, in plain words. Empty when nothing did.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "market",
+    "area",
+    "timezone",
+    "duration_minutes",
+    "searched",
+    "best",
+    "alternatives",
+    "earliest",
+    "saving_eur_per_kwh",
+    "saving_percent",
+    "warnings",
+    "sources"
+  ],
+  "title": "Cheapest",
+  "type": "object"
+}
