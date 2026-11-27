@@ -1,0 +1,345 @@
+{
+  "$defs": {
+    "Basis": {
+      "description": "What a price rests on.",
+      "oneOf": [
+        {
+          "const": "published",
+          "description": "Prices published by Red Eléctrica.",
+          "type": "string"
+        },
+        {
+          "const": "estimated",
+          "description": "vatio's own estimate for a day whose prices are not published yet, made from\nrecent published days of the same kind (see `method`). It is not Red\nEléctrica data, and not a forecast of the weather or the market.",
+          "type": "string"
+        }
+      ]
+    },
+    "Dataset": {
+      "description": "What one upstream request supplied.",
+      "enum": [
+        "prices",
+        "demand",
+        "generation",
+        "emissions"
+      ],
+      "type": "string"
+    },
+    "DayKind": {
+      "description": "The kind of day, which decides which past days an estimate is averaged from: a\n`weekday` is any day from Monday to Friday. Public holidays get no special\ntreatment: one that falls between Monday and Friday counts as a weekday.",
+      "enum": [
+        "weekday",
+        "saturday",
+        "sunday"
+      ],
+      "type": "string"
+    },
+    "Market": {
+      "description": "Which price series to use.",
+      "oneOf": [
+        {
+          "const": "pvpc",
+          "description": "PVPC 2.0TD: the energy term of the regulated household tariff. It carries the\ncost of energy and the energy share of tolls and charges; taxes come on top. Hourly.",
+          "type": "string"
+        },
+        {
+          "const": "spot",
+          "description": "Day-ahead wholesale market price for the Spanish zone. Quarter-hourly.",
+          "type": "string"
+        }
+      ]
+    },
+    "OutlookBest": {
+      "description": "The cheapest window of an outlook and what its price rests on.",
+      "properties": {
+        "basis": {
+          "$ref": "#/$defs/Basis",
+          "description": "`published` when every price inside the window was published by Red Eléctrica.\n`estimated` when any part of the window falls on an estimated day: its mean\nis then vatio's estimate, not Red Eléctrica data."
+        },
+        "end": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "mean_eur_per_kwh": {
+          "format": "double",
+          "type": "number"
+        },
+        "mean_eur_per_mwh": {
+          "description": "Time-weighted mean price over the window.",
+          "format": "double",
+          "type": "number"
+        },
+        "start": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "starts_in_minutes": {
+          "description": "Minutes from now until this window begins (0 = start immediately).",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "mean_eur_per_mwh",
+        "mean_eur_per_kwh",
+        "starts_in_minutes",
+        "basis"
+      ],
+      "type": "object"
+    },
+    "OutlookDay": {
+      "description": "One day of an outlook.",
+      "properties": {
+        "basis": {
+          "$ref": "#/$defs/Basis",
+          "description": "`published` for today, and for tomorrow once Red Eléctrica has published it.\n`estimated` for the days after the last published one."
+        },
+        "cheapest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PriceWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The cheapest window that lies entirely within this day; for today, within what\nis left of it. Null when a run of the requested length does not fit there. On\nan estimated day its mean is vatio's estimate, not Red Eléctrica data."
+        },
+        "day": {
+          "description": "Calendar day, `YYYY-MM-DD`.",
+          "type": "string"
+        },
+        "estimated_from": {
+          "description": "The published days this day's estimate is made from, `YYYY-MM-DD`, newest\nfirst: the days of the steady mean (see `method`), of which the first\n`method.fresh_days` are those of the fresh mean. Empty for a published day.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/DayKind"
+        }
+      },
+      "required": [
+        "day",
+        "kind",
+        "basis",
+        "cheapest",
+        "estimated_from"
+      ],
+      "type": "object"
+    },
+    "OutlookMethod": {
+      "description": "How the days without published prices were estimated.",
+      "properties": {
+        "fresh_days": {
+          "description": "How many published days the fresh mean is over. An estimate needs that many.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "const": "fresh_and_steady_mean",
+          "description": "Always `fresh_and_steady_mean`: each clock hour of an estimated day is priced\nat the average of two means of that clock hour over the most recent published\ndays of the same kind (weekdays, Saturdays or Sundays): a fresh mean over the\nlast `fresh_days` of them and a steady mean over the last `steady_days`, which\ninclude the fresh ones.",
+          "type": "string"
+        },
+        "steady_days": {
+          "description": "How many published days the steady mean is over. Where fewer of the kind are\nfound, going back at most 90 days before today, it is over as many as there\nare, and `estimated_from` lists them.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "fresh_days",
+        "steady_days"
+      ],
+      "type": "object"
+    },
+    "OutlookSpan": {
+      "description": "The time span an outlook searched.",
+      "properties": {
+        "from": {
+          "description": "Earliest allowed start: the start of the current minute.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "until": {
+          "description": "Latest allowed finish: the end of the last estimated day.",
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "until"
+      ],
+      "type": "object"
+    },
+    "PriceWindow": {
+      "description": "A candidate run window `[start, end)` and what energy costs on average inside it.",
+      "properties": {
+        "end": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "mean_eur_per_kwh": {
+          "format": "double",
+          "type": "number"
+        },
+        "mean_eur_per_mwh": {
+          "description": "Time-weighted mean price over the window.",
+          "format": "double",
+          "type": "number"
+        },
+        "start": {
+          "description": "RFC 3339 timestamp carrying the Europe/Madrid UTC offset",
+          "format": "date-time",
+          "type": "string"
+        },
+        "starts_in_minutes": {
+          "description": "Minutes from now until this window begins (0 = start immediately).",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "mean_eur_per_mwh",
+        "mean_eur_per_kwh",
+        "starts_in_minutes"
+      ],
+      "type": "object"
+    },
+    "Source": {
+      "description": "Where a document's data came from. Every document lists its sources.",
+      "properties": {
+        "cached": {
+          "description": "True when served from the local cache instead of the network.",
+          "type": "boolean"
+        },
+        "dataset": {
+          "$ref": "#/$defs/Dataset"
+        },
+        "fetched_at": {
+          "description": "When this program retrieved it from upstream.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "name": {
+          "description": "Publisher of the data. Cite it when you reuse a figure.",
+          "type": "string"
+        },
+        "updated_at": {
+          "description": "When the publisher last updated this data. Cite it along with the name.",
+          "format": "date-time",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The upstream request that produced it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "dataset",
+        "url",
+        "updated_at",
+        "fetched_at",
+        "cached"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The cheapest time to run something for a fixed duration over the next several days.\n\nRed Eléctrica publishes prices one day ahead, so only today and, from the evening,\ntomorrow have published prices. The days after that are estimated by vatio from\nrecent published days (see `method`), and published and estimated days are\nsearched together. Everything marked `estimated` is vatio's own estimate, not Red\nEléctrica data and not a forecast: check again once the day is published.",
+  "properties": {
+    "area": {
+      "const": "peninsula",
+      "description": "Always `peninsula`.",
+      "type": "string"
+    },
+    "at": {
+      "description": "The instant this answer was produced.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "best": {
+      "$ref": "#/$defs/OutlookBest",
+      "description": "The cheapest window in the whole span. It may cross midnight, and so differ\nfrom every entry of `days`."
+    },
+    "days": {
+      "description": "Every day searched, in order: the published days first, then the estimated ones.",
+      "items": {
+        "$ref": "#/$defs/OutlookDay"
+      },
+      "type": "array"
+    },
+    "duration_minutes": {
+      "description": "Length of the run asked for.",
+      "format": "int64",
+      "type": "integer"
+    },
+    "market": {
+      "$ref": "#/$defs/Market",
+      "const": "pvpc",
+      "description": "Always `pvpc`: the outlook covers the regulated household price only."
+    },
+    "method": {
+      "$ref": "#/$defs/OutlookMethod"
+    },
+    "schema": {
+      "const": "vatio.outlook/v1",
+      "description": "Always `vatio.outlook/v1`.",
+      "type": "string"
+    },
+    "searched": {
+      "$ref": "#/$defs/OutlookSpan"
+    },
+    "sources": {
+      "description": "The published prices used, both those searched and those the estimates are\naveraged from.",
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "type": "array"
+    },
+    "timezone": {
+      "const": "Europe/Madrid",
+      "description": "Always `Europe/Madrid`.",
+      "type": "string"
+    },
+    "warnings": {
+      "description": "Abnormal conditions that affected the answer, in plain words. Empty when\nthere were none.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "market",
+    "area",
+    "timezone",
+    "at",
+    "duration_minutes",
+    "searched",
+    "best",
+    "days",
+    "method",
+    "warnings",
+    "sources"
+  ],
+  "title": "Outlook",
+  "type": "object"
+}
