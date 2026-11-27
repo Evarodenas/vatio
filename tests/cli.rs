@@ -98,21 +98,17 @@ fn day_body(day: &str, hourly: &[f64]) -> Value {
     )
 }
 
-/// A REData answer transcribed from the live API (see tests/fixtures/README.md).
+/// A REData answer from the live API (see tests/fixtures/README.md).
 fn fixture(name: &str) -> Value {
     let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap()
 }
 
-/// An error document in the shape REData's documentation describes. The wording for
-/// "nothing published" has not been observed on the live API, so this text is a guess;
-/// what has been observed is a success document with the series absent (`unpublished`).
+/// What the live API answers, under HTTP 502, for a range it holds nothing for. When
+/// only one of the two markets is out, it answers 200 with the other series absent
+/// (`unpublished`).
 fn no_data_body() -> Value {
-    json!({"errors": [{
-        "code": 502, "status": "502",
-        "title": "No values for specified archive.",
-        "detail": "There are no data for the selected filters."
-    }]})
+    fixture("redata_error_no_data_502.json")
 }
 
 /// Thursday's profile: expensive evening, cheap small hours. Index = hour of day.
@@ -651,6 +647,55 @@ const CO2: &str = "generacion/no-renovables-detalle-emisiones-CO2";
 /// 20:15 in Madrid, just after the latest reading in the demand fixture.
 const GRID_NOW: &str = "2026-11-26T19:15:00Z";
 
+/// The answers the live API gave on 2026-11-26, byte for byte, for the four days the
+/// grid report asks about. Two things in them broke the first live run: the emissions
+/// answer carries a number where a timestamp belongs, and its factor series is out of
+/// step with its days.
+#[tokio::test(flavor = "multi_thread")]
+async fn grid_reads_the_answers_the_live_api_gave() {
+    let mut env = Env::new("grid-live").await;
+    env.now = GRID_NOW;
+    env.serve_fixture(
+        DEMAND,
+        200,
+        fixture("redata_demand_realtime_2026-11-26T2000_2030.json"),
+    )
+    .await;
+    env.serve_fixture(
+        MIX,
+        200,
+        fixture("redata_generation_structure_day_2026-11-22_25.json"),
+    )
+    .await;
+    env.serve_fixture(
+        CO2,
+        200,
+        fixture("redata_co2_emissions_day_2026-11-22_25.json"),
+    )
+    .await;
+
+    let (code, doc, _) = env.json(&["grid"]).await;
+    assert_eq!(code, 0);
+    assert_eq!(doc["warnings"], json!([]));
+    let generation = &doc["generation"];
+    assert_eq!(generation["day"], "2026-11-25");
+    assert_eq!(generation["total_mwh"], 892181.3);
+    assert_eq!(generation["renewable_percent"], 66.3);
+    assert_eq!(generation["co2_tonnes"], 67445.0);
+    assert_eq!(
+        generation["co2_g_per_kwh"], 75.6,
+        "67,445 t over 892,181 MWh, not the 64.3 of the factor series"
+    );
+    assert_eq!(generation["technologies"][0]["id"], "wind");
+    assert_eq!(generation["technologies"][0]["percent"], 43.7);
+
+    let human = String::from_utf8(env.run(&["grid"]).await.stdout).unwrap();
+    assert!(
+        human.contains("66.3% renewable  ·  76 g CO₂/kWh"),
+        "{human}"
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn grid_combines_live_demand_with_the_latest_daily_mix() {
     let mut env = Env::new("grid").await;
@@ -670,7 +715,7 @@ async fn grid_combines_live_demand_with_the_latest_daily_mix() {
     env.serve_fixture(
         CO2,
         200,
-        fixture("redata_co2_emissions_day_2026-11-23_24.json"),
+        fixture("redata_co2_emissions_day_2026-11-22_25.json"),
     )
     .await;
 
@@ -1293,8 +1338,8 @@ async fn another_server_never_writes_into_the_default_cache() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn errors_for_tomorrow_are_not_all_called_unpublished() {
-    // An error document in the documented shape that says there is no data is "not
-    // available". Any other error for tomorrow is what it says it is.
+    // REData's answer for a range it holds nothing for means "not published yet" when
+    // the day is still to come. Any other error for tomorrow is what it says it is.
     let env = Env::new("tomorrow-errors").await;
     Mock::given(method("GET"))
         .and(path(PRICES_PATH))
@@ -1303,6 +1348,34 @@ async fn errors_for_tomorrow_are_not_all_called_unpublished() {
         .await;
     let (code, _, err) = env.json(&["prices", "tomorrow"]).await;
     assert_eq!((code, &err["error"]["code"]), (3, &json!("not_available")));
+    assert_eq!(err["error"]["retryable"], true);
+    assert_eq!(
+        env.requests().await,
+        1,
+        "a known answer is not asked for again"
+    );
+
+    // Today's prices were published yesterday, so there the same answer is a failure
+    // on REData's side, to be tried again. An old day simply has no data.
+    let (code, _, err) = env.json(&["prices", "today"]).await;
+    assert_eq!((code, &err["error"]["code"]), (4, &json!("upstream")));
+    assert_eq!(err["error"]["retryable"], true);
+    let (code, _, err) = env.json(&["prices", "2001-01-01"]).await;
+    assert_eq!((code, &err["error"]["code"]), (3, &json!("not_available")));
+    assert_eq!(err["error"]["retryable"], false);
+
+    // The same words under HTTP 400 are a rejected request, not an unpublished day.
+    let env = Env::new("tomorrow-errors-400").await;
+    Mock::given(method("GET"))
+        .and(path(PRICES_PATH))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_json(fixture("redata_error_bad_request_400.json")),
+        )
+        .mount(&env.server)
+        .await;
+    let (code, _, err) = env.json(&["prices", "tomorrow"]).await;
+    assert_eq!((code, &err["error"]["code"]), (4, &json!("upstream")));
+    assert_eq!(err["error"]["retryable"], false);
 
     let env = Env::new("tomorrow-errors-2").await;
     Mock::given(method("GET"))

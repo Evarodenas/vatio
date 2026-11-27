@@ -30,7 +30,6 @@ const DEMAND_SCHEDULED: &str = "2053";
 
 /// Series identifiers in the generation and emissions widgets.
 const MIX_TOTAL: &str = "10296";
-const CO2_PER_MWH: &str = "MWh";
 const CO2_TOTAL: &str = "tCO2 eq.";
 
 /// How far back to look for the latest published daily figures.
@@ -113,9 +112,9 @@ impl Vatio {
                 } = found;
                 warnings.extend(notes);
                 match read(co2_res).and_then(|env| Ok((co2(&env, day)?, env))) {
-                    Ok(((per_kwh, tonnes), env)) => {
-                        generation.co2_g_per_kwh = per_kwh;
-                        generation.co2_tonnes = tonnes;
+                    Ok((tonnes, env)) => {
+                        generation.co2_g_per_kwh = intensity(tonnes, generation.total_mwh);
+                        generation.co2_tonnes = Some(round(tonnes, 1));
                         cite(Dataset::Emissions, &co2_url, &env);
                     }
                     Err(err) => {
@@ -338,33 +337,40 @@ fn mix(env: &Envelope) -> Result<Mix> {
     })
 }
 
-/// Emission factor (g CO2eq/kWh) and total emissions (t CO2eq) for `day`.
-fn co2(env: &Envelope, day: Date) -> Result<(Option<f64>, Option<f64>)> {
-    let on_day = |id: &str, title: &str| -> Option<f64> {
-        let s = series(env, id).or_else(|| {
-            env.included.iter().find(|s| {
-                s.attributes
-                    .title
-                    .as_deref()
-                    .is_some_and(|t| t.eq_ignore_ascii_case(title))
-            })
-        })?;
-        let observations = s.observations().ok()?;
-        observations
-            .into_iter()
-            .find(|(at, _)| LocalTime(*at).date() == day)
-            .map(|(_, v)| v)
-    };
-    // Published in tonnes per MWh, which is numerically kilograms per kWh.
-    let per_kwh = on_day(CO2_PER_MWH, "tCO2 eq./MWh").map(|t_per_mwh| round(t_per_mwh * 1000.0, 1));
-    let tonnes = on_day(CO2_TOTAL, "Total tCO2 eq.").map(|t| round(t, 1));
-    if per_kwh.is_none() && tonnes.is_none() {
-        return Err(Error::not_yet(
-            format!("Red Eléctrica has published no emissions figures for {day}"),
-            None,
-        ));
-    }
-    Ok((per_kwh, tonnes))
+/// Tonnes of CO2 equivalent emitted by generation on `day`.
+fn co2(env: &Envelope, day: Date) -> Result<f64> {
+    let total = series(env, CO2_TOTAL).or_else(|| {
+        env.included.iter().find(|s| {
+            s.attributes
+                .title
+                .as_deref()
+                .is_some_and(|t| t.eq_ignore_ascii_case("Total tCO2 eq."))
+        })
+    });
+    total
+        .and_then(|s| s.observations().ok())
+        .and_then(|days| {
+            days.into_iter()
+                .find(|(at, _)| LocalTime(*at).date() == day)
+        })
+        .map(|(_, tonnes)| tonnes)
+        .ok_or_else(|| {
+            Error::not_yet(
+                format!("Red Eléctrica has published no emissions figures for {day}"),
+                None,
+            )
+        })
+}
+
+/// Grams of CO2 equivalent per kWh generated: the day's emissions over the day's
+/// generation. REData publishes this factor as a series of its own (id `MWh`), but
+/// when the range asked for includes a day on which coal emitted nothing, that series
+/// comes back out of step with its days: each value is another day's emissions over
+/// this day's generation (seen on 2026-11-26; `tests/fixtures/README.md`). So it is
+/// worked out here from the two totals, which is what the series holds when it is right.
+fn intensity(tonnes: f64, generated_mwh: f64) -> Option<f64> {
+    // Tonnes per MWh is numerically kilograms per kWh.
+    (generated_mwh > 0.0).then(|| round(tonnes / generated_mwh * 1000.0, 1))
 }
 
 fn is_total(s: &Series) -> bool {
@@ -629,11 +635,54 @@ mod tests {
     }
 
     #[test]
-    fn co2_converts_the_published_factor_to_grams_per_kwh() {
-        let env = envelope(fixture("redata_co2_emissions_day_2026-11-23_24.json"));
-        let day: Date = "2026-11-24".parse().unwrap();
-        assert_eq!(co2(&env, day).unwrap(), (Some(111.0), Some(89_721.2)));
-        assert!(co2(&env, "2026-11-20".parse().unwrap()).is_err());
+    fn co2_intensity_is_the_days_emissions_over_the_days_generation() {
+        // Raw answers from the live API for 22 to 25 November 2026.
+        let emissions = envelope(fixture("redata_co2_emissions_day_2026-11-22_25.json"));
+        let found = mix(&envelope(fixture(
+            "redata_generation_structure_day_2026-11-22_25.json",
+        )))
+        .unwrap();
+        assert_eq!(found.day.to_string(), "2026-11-25");
+        assert_eq!(found.generation.total_mwh, 892_181.3);
+
+        let tonnes = co2(&emissions, found.day).unwrap();
+        assert_eq!(round(tonnes, 1), 67_445.0);
+        assert_eq!(
+            intensity(tonnes, found.generation.total_mwh),
+            Some(75.6),
+            "67,445 t over 892,181 MWh"
+        );
+
+        // The factor series in that same answer says 64.3 for the 25th: the emissions
+        // of the 22nd over the generation of the 25th. It is not used.
+        let published = series(&emissions, "MWh").unwrap().observations().unwrap();
+        let (_, factor) = published.last().unwrap();
+        assert_eq!(round(factor * 1000.0, 1), 64.3);
+        assert_eq!(
+            intensity(
+                co2(&emissions, "2026-11-22".parse().unwrap()).unwrap(),
+                892_181.3
+            ),
+            Some(64.3)
+        );
+
+        // Every day's total equals the sum of its technologies, whatever order the
+        // total series lists its days in.
+        for day in ["2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25"] {
+            let day: Date = day.parse().unwrap();
+            let sum: f64 = emissions
+                .included
+                .iter()
+                .filter(|s| !s.attributes.composite)
+                .flat_map(|s| s.observations().unwrap())
+                .filter(|(at, _)| LocalTime(*at).date() == day)
+                .map(|(_, v)| v)
+                .sum();
+            assert!((co2(&emissions, day).unwrap() - sum).abs() < 0.01, "{day}");
+        }
+
+        assert!(co2(&emissions, "2026-11-20".parse().unwrap()).is_err());
+        assert_eq!(intensity(10.0, 0.0), None);
     }
 
     #[test]
