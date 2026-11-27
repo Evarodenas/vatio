@@ -8,8 +8,8 @@ use jiff::Timestamp;
 
 use crate::{
     model::{
-        Cheapest, Dataset, Grid, Level, Market, Now, PricePoint, PriceStats, PriceWindow, Prices,
-        Source, Tomorrow,
+        Basis, Cheapest, Dataset, Grid, Level, Market, Now, Outlook, PricePoint, PriceStats,
+        PriceWindow, Prices, Source, Tomorrow,
     },
     time::{self, LocalTime},
 };
@@ -351,6 +351,76 @@ pub fn cheapest(doc: &Cheapest) -> String {
             "  {DIM}Tomorrow's prices are not published yet; a cheaper slot may appear once they are.{DIM:#}"
         );
     }
+    for warning in &doc.warnings {
+        let _ = writeln!(out, "  {RED}!{RED:#} {warning}");
+    }
+    out.push_str(&credit(&doc.sources));
+    out
+}
+
+pub fn outlook(doc: &Outlook) -> String {
+    let mut out = String::new();
+    let m = doc.market;
+    let length = time::fmt_duration(doc.duration_minutes * 60);
+    let _ = writeln!(
+        out,
+        "{BOLD}Outlook for {length} on {}{BOLD:#} {DIM}· searched {} {} → {} {} · {}{DIM:#}\n",
+        m.label(),
+        day_label(doc.searched.from),
+        doc.searched.from.hhmm(),
+        day_label(LocalTime(
+            Timestamp::from_second(doc.searched.until.0.as_second() - 1)
+                .unwrap_or(doc.searched.until.0)
+        )),
+        clock_end(doc.searched.until, doc.searched.from),
+        basis(m),
+    );
+    let word = |basis: Basis| match basis {
+        Basis::Published => "published",
+        Basis::Estimated => "estimated",
+    };
+    for day in &doc.days {
+        let label = day
+            .day
+            .parse::<jiff::civil::Date>()
+            .map(|d| d.strftime("%a %-d %b").to_string())
+            .unwrap_or_else(|_| day.day.clone());
+        let found = match &day.cheapest {
+            Some(w) => format!(
+                "{}   {} {}",
+                span(w.start, w.end),
+                price(m, w.mean_eur_per_mwh),
+                unit(m)
+            ),
+            None => format!("no room left for a {length} run"),
+        };
+        let row = format!("{label:<10}  {}  {found}", word(day.basis));
+        // The best window may cross midnight, and then it is no single day's own.
+        if day.cheapest == Some(doc.best.window) {
+            let _ = writeln!(out, "  {GREEN}★ {row}{GREEN:#}");
+        } else {
+            let _ = writeln!(out, "    {row}");
+        }
+    }
+
+    let best = &doc.best.window;
+    let _ = writeln!(
+        out,
+        "\n  Best: {} {}, {} {} {}, {}.",
+        day_label(best.start),
+        span(best.start, best.end),
+        word(doc.best.basis),
+        price(m, best.mean_eur_per_mwh),
+        unit(m),
+        wait(best.starts_in_minutes)
+    );
+    let _ = writeln!(
+        out,
+        "  {DIM}Estimated: the average of the last {} days of the same kind (weekdays or weekend \
+         days). It is vatio's own estimate, not Red Eléctrica's; published prices for a day \
+         arrive the evening before.{DIM:#}",
+        doc.method.days_averaged
+    );
     for warning in &doc.warnings {
         let _ = writeln!(out, "  {RED}!{RED:#} {warning}");
     }

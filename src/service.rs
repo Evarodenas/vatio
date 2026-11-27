@@ -1,14 +1,19 @@
 //! The operations behind every command and MCP tool.
 
-use jiff::{Timestamp, civil::Date};
+use std::collections::BTreeMap;
+
+use jiff::{Timestamp, ToSpan, civil::Date};
 
 use crate::{
     cache::{Cache, Entry},
     error::{Error, Result},
     model::{
-        AREA_PRICES, Cheapest, Dataset, Level, Market, Now, PricePoint, PriceStats, PriceWindow,
-        Prices, SCHEMA_CHEAPEST, SCHEMA_NOW, SCHEMA_PRICES, SearchSpan, Source, Tomorrow, round,
+        AREA_PRICES, Basis, Cheapest, Dataset, DayKind, Level, Market, Now, Outlook, OutlookBest,
+        OutlookDay, OutlookMethod, OutlookSpan, PricePoint, PriceStats, PriceWindow, Prices,
+        SCHEMA_CHEAPEST, SCHEMA_NOW, SCHEMA_OUTLOOK, SCHEMA_PRICES, SearchSpan, Source, Tomorrow,
+        round,
     },
+    outlook,
     redata::{self, Client},
     time::{self, LocalTime, ZONE},
     window::{self, Slot},
@@ -20,6 +25,11 @@ const PRICES_WIDGET: &str = "mercados/precios-mercados-tiempo-real";
 /// Published prices are rarely corrected, but it does happen; a day that is over is
 /// kept as it is.
 const REVALIDATE_AFTER_SECS: i64 = 3600;
+
+/// How many days after the last published one an outlook estimates.
+const OUTLOOK_ESTIMATED_DAYS: usize = 5;
+/// How many days before today an outlook may reach back for days to estimate from.
+const OUTLOOK_LOOKBACK_DAYS: i64 = 16;
 
 /// How to construct the service.
 #[derive(Debug, Clone, Default)]
@@ -330,6 +340,182 @@ impl Vatio {
         })
     }
 
+    /// The cheapest time to run something over the next several days: published
+    /// prices where there are any, and for the days after them the estimate described
+    /// in [`outlook`]. PVPC only.
+    pub async fn outlook(&self, duration_secs: i64) -> Result<Outlook> {
+        const MARKET: Market = Market::Pvpc;
+        let at = self.now();
+        // Whole minutes keep every reported window on a minute boundary.
+        let now = time::floor_minute(at);
+        let today = time::today(now);
+        let tomorrow = today.tomorrow().map_err(Error::internal)?;
+
+        // Published days: today, and tomorrow once it is out.
+        let mut warnings = Vec::new();
+        let mut known: BTreeMap<Date, Day> = BTreeMap::new();
+        known.insert(today, self.day(MARKET, today).await?);
+        match self.day(MARKET, tomorrow).await {
+            Ok(d) => {
+                known.insert(tomorrow, d);
+            }
+            // Not out yet is the normal state of affairs for most of the day.
+            Err(Error::NotAvailable { .. }) => {}
+            Err(err) => warnings.push(format!(
+                "could not check prices for {tomorrow}, so that day is estimated: {}",
+                err.message()
+            )),
+        }
+        let published: Vec<Date> = known.keys().copied().collect();
+        let last = published.last().copied().unwrap_or(today);
+        // Estimated days: the ones that follow the last published day.
+        let mut estimated = Vec::new();
+        let mut day = last;
+        for _ in 0..OUTLOOK_ESTIMATED_DAYS {
+            day = day.tomorrow().map_err(Error::internal)?;
+            estimated.push(day);
+        }
+
+        // Past days to estimate from: the cache first, then one request for the span
+        // of those still wanted, instead of one request per day.
+        let first = today
+            .checked_sub(OUTLOOK_LOOKBACK_DAYS.days())
+            .map_err(Error::internal)?;
+        let mut day = first;
+        while day < today {
+            if let Some(cached) = self.cached_day(MARKET, day) {
+                known.insert(day, cached);
+            }
+            day = day.tomorrow().map_err(Error::internal)?;
+        }
+        let kinds: Vec<DayKind> = [DayKind::Weekday, DayKind::Weekend]
+            .into_iter()
+            .filter(|kind| estimated.iter().any(|day| outlook::kind(*day) == *kind))
+            .collect();
+        let wanted: Vec<Date> = kinds
+            .iter()
+            .flat_map(|kind| {
+                outlook::source_days(*kind, last, first, |day| known.contains_key(&day)).1
+            })
+            .collect();
+        if let (Some(from), Some(to)) = (wanted.iter().min(), wanted.iter().max()) {
+            known.extend(self.fetch_past(MARKET, *from, *to).await?);
+        }
+
+        // One estimate per kind of day: the days it is averaged from, and its 24 hours.
+        let mut estimates = Vec::new();
+        for kind in kinds {
+            let (from, _) = outlook::source_days(kind, last, first, |day| known.contains_key(&day));
+            if from.len() < outlook::DAYS_AVERAGED {
+                let name = match kind {
+                    DayKind::Weekday => "weekdays",
+                    DayKind::Weekend => "weekend days",
+                };
+                return Err(Error::no_data(format!(
+                    "too little price history for an outlook: {} published {name} are needed to \
+                     estimate from, and only {} were found from {first} on",
+                    outlook::DAYS_AVERAGED,
+                    from.len()
+                )));
+            }
+            let days: Vec<&[Slot]> = from.iter().map(|day| known[day].slots.as_slice()).collect();
+            let hourly = outlook::hourly_means(&days);
+            estimates.push((kind, from, hourly));
+        }
+        let estimate = |day: Date| {
+            estimates
+                .iter()
+                .find(|(kind, ..)| *kind == outlook::kind(day))
+        };
+
+        // One continuous series: published slots from now on, then the estimated days.
+        let mut slots: Vec<Slot> = published
+            .iter()
+            .flat_map(|day| known[day].slots.iter().copied())
+            .collect();
+        for day in &estimated {
+            if let Some((_, _, hourly)) = estimate(*day) {
+                slots.extend(outlook::estimated_slots(*day, hourly)?);
+            }
+        }
+        let (estimates_start, _) = time::day_bounds(estimated[0])?;
+        let until = slots.last().map_or(now, |s| s.end);
+        let searchable = window::clip(&slots, now, until);
+
+        let as_window = |w: &window::Window| PriceWindow {
+            start: LocalTime(w.start),
+            end: LocalTime(w.end),
+            mean_eur_per_mwh: round(w.mean, 2),
+            mean_eur_per_kwh: round(w.mean / 1000.0, 5),
+            starts_in_minutes: (w.start - now).as_mins(),
+        };
+        let found = window::cheapest(&searchable, duration_secs, 1);
+        let best = found
+            .first()
+            .ok_or_else(|| Error::internal("an outlook found no window to report"))?;
+        let mut days = Vec::new();
+        for day in published.iter().chain(&estimated) {
+            let (day_start, day_end) = time::day_bounds(*day)?;
+            let within = window::clip(&searchable, day_start, day_end);
+            let estimated_from = match estimate(*day) {
+                Some((_, from, _)) if *day > last => from.iter().map(Date::to_string).collect(),
+                _ => Vec::new(),
+            };
+            days.push(OutlookDay {
+                day: day.to_string(),
+                kind: outlook::kind(*day),
+                basis: if *day > last {
+                    Basis::Estimated
+                } else {
+                    Basis::Published
+                },
+                cheapest: window::cheapest(&within, duration_secs, 1)
+                    .first()
+                    .map(as_window),
+                estimated_from,
+            });
+        }
+
+        // Cite each answer from Red Eléctrica once: the days searched, then the days
+        // the estimates are averaged from.
+        let mut sources: Vec<Source> = Vec::new();
+        let averaged = estimates.iter().flat_map(|(_, from, _)| from);
+        for day in published.iter().chain(averaged) {
+            let source = &known[day].source;
+            if !sources.contains(source) {
+                sources.push(source.clone());
+            }
+        }
+
+        Ok(Outlook {
+            schema: SCHEMA_OUTLOOK,
+            market: MARKET,
+            area: AREA_PRICES,
+            timezone: ZONE,
+            at: LocalTime(at),
+            duration_minutes: duration_secs / 60,
+            searched: OutlookSpan {
+                from: LocalTime(now),
+                until: LocalTime(until),
+            },
+            best: OutlookBest {
+                window: as_window(best),
+                basis: if best.end > estimates_start {
+                    Basis::Estimated
+                } else {
+                    Basis::Published
+                },
+            },
+            days,
+            method: OutlookMethod {
+                name: "same_kind_days",
+                days_averaged: outlook::DAYS_AVERAGED as u32,
+            },
+            warnings,
+            sources,
+        })
+    }
+
     /// Load one day of one market: cache first, then REData.
     async fn day(&self, market: Market, day: Date) -> Result<Day> {
         let now = self.now();
@@ -460,6 +646,89 @@ impl Vatio {
             }
         }
         wanted.ok_or_else(not_published)
+    }
+
+    /// A complete day held in the cache, without asking REData. For days that have
+    /// ended, which are kept as they are.
+    fn cached_day(&self, market: Market, day: Date) -> Option<Day> {
+        if self.refresh {
+            return None;
+        }
+        let (day_start, day_end) = time::day_bounds(day).ok()?;
+        let entry = self.cache.as_ref()?.get(market, day)?;
+        from_cache(entry, day_start, day_end).map(|(cached, _)| cached)
+    }
+
+    /// The complete days among `first` to `last`, both in the past, from one request
+    /// for the whole span. Each is stored in the cache under its own day, so it is
+    /// not asked for again.
+    async fn fetch_past(
+        &self,
+        market: Market,
+        first: Date,
+        last: Date,
+    ) -> Result<Vec<(Date, Day)>> {
+        let now = self.now();
+        let url = self.client.url(
+            PRICES_WIDGET,
+            &[
+                ("start_date", &format!("{first}T00:00")),
+                ("end_date", &format!("{last}T23:59")),
+                ("time_trunc", "hour"),
+            ],
+        );
+        let shown_url = redata::redact(&url);
+        // These days were published long ago, so "nothing for that range" is a
+        // failure on REData's side here, like any other.
+        let envelope = self
+            .client
+            .get(&url)
+            .await
+            .map_err(redata::Failure::into_error)?;
+        let Some(series) = envelope
+            .included
+            .iter()
+            .find(|s| s.id == market.series_id())
+        else {
+            return Ok(Vec::new());
+        };
+        let observations = series.observations()?;
+        let published_at = series.last_update();
+
+        let mut days = Vec::new();
+        let mut day = first;
+        while day <= last {
+            let (day_start, day_end) = time::day_bounds(day)?;
+            let slots = to_slots(&observations, market, day_start, day_end);
+            if is_complete(&slots, day_start, day_end) {
+                if let Some(cache) = &self.cache {
+                    let stored = slots.iter().map(|s| (s.start, s.end, s.value)).collect();
+                    cache.put(
+                        market,
+                        day,
+                        &Entry::new(shown_url.clone(), now, published_at, stored),
+                    );
+                }
+                let source = Source {
+                    name: redata::SOURCE_NAME,
+                    dataset: Dataset::Prices,
+                    url: shown_url.clone(),
+                    updated_at: published_at.map(LocalTime),
+                    fetched_at: LocalTime(now),
+                    cached: false,
+                };
+                days.push((
+                    day,
+                    Day {
+                        slots,
+                        complete: true,
+                        source,
+                    },
+                ));
+            }
+            day = day.tomorrow().map_err(Error::internal)?;
+        }
+        Ok(days)
     }
 }
 

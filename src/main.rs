@@ -5,7 +5,7 @@ use vatio::{
     CheapestQuery, Error, Options, Result, Vatio,
     error::ErrorReport,
     mcp,
-    model::{Cheapest, Grid, Market, Now, Prices},
+    model::{Cheapest, Grid, Market, Now, Outlook, Prices},
     render, time,
 };
 
@@ -15,6 +15,7 @@ Examples:
   vatio prices tomorrow              Tomorrow's hourly PVPC (published in the evening)
   vatio cheapest 3h                  Best 3-hour window between now and the end of published prices
   vatio cheapest 90m --until 08:00   ...that finishes by 08:00
+  vatio outlook 3h                   Best 3-hour window over the next days, later ones estimated
   vatio grid                         Demand right now and how renewable the mix is
   vatio prices --market spot --json  Quarter-hourly wholesale prices as JSON
 
@@ -91,6 +92,16 @@ enum Command {
         #[arg(short, long, value_enum, default_value_t)]
         market: Market,
     },
+    /// The cheapest time to run something over the next several days (PVPC)
+    ///
+    /// Searches the published prices (today, and tomorrow once it is out) together
+    /// with vatio's own estimate for the five days after them: the average of the
+    /// last four days of the same kind, weekdays or weekend days. Every day is
+    /// labelled as published or estimated.
+    Outlook {
+        /// How long the run lasts: 3h, 90m, 2h30m, PT45M. A bare number means hours
+        duration: String,
+    },
     /// Live demand and the latest generation mix, renewable share and CO2 intensity
     ///
     /// Demand is measured every few minutes. The mix by technology is published per
@@ -98,7 +109,8 @@ enum Command {
     Grid,
     /// Run as an MCP server over stdio, for AI agents
     ///
-    /// Tools: get_prices, get_current_price, find_cheapest_window, get_grid_status.
+    /// Tools: get_prices, get_current_price, find_cheapest_window, get_price_outlook,
+    /// get_grid_status.
     /// Each returns the same document as the matching command prints with --json.
     Mcp,
     /// Print the JSON Schemas of everything --json and the MCP tools return
@@ -116,6 +128,7 @@ enum SchemaName {
     Prices,
     Now,
     Cheapest,
+    Outlook,
     Grid,
     Error,
 }
@@ -131,6 +144,7 @@ impl SchemaName {
             Self::Prices => generator.into_root_schema_for::<Prices>(),
             Self::Now => generator.into_root_schema_for::<Now>(),
             Self::Cheapest => generator.into_root_schema_for::<Cheapest>(),
+            Self::Outlook => generator.into_root_schema_for::<Outlook>(),
             Self::Grid => generator.into_root_schema_for::<Grid>(),
             Self::Error => generator.into_root_schema_for::<ErrorReport>(),
         }
@@ -202,6 +216,7 @@ async fn run(cli: &Cli) -> Result<()> {
                     "prices": SchemaName::Prices.schema(),
                     "now": SchemaName::Now.schema(),
                     "cheapest": SchemaName::Cheapest.schema(),
+                    "outlook": SchemaName::Outlook.schema(),
                     "grid": SchemaName::Grid.schema(),
                     "error": SchemaName::Error.schema(),
                 })),
@@ -256,6 +271,10 @@ async fn run(cli: &Cli) -> Result<()> {
                 })
                 .await?;
             emit(cli.json, &doc, || render::cheapest(&doc))
+        }
+        Command::Outlook { duration } => {
+            let doc: Outlook = vatio.outlook(time::parse_duration(duration)?).await?;
+            emit(cli.json, &doc, || render::outlook(&doc))
         }
         Command::Grid => {
             let doc: Grid = vatio.grid().await?;

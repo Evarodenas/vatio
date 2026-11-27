@@ -934,7 +934,7 @@ async fn schema_command_documents_every_output() {
     let env = Env::new("schema").await;
     let out = env.run(&["schema"]).await;
     let all: Value = serde_json::from_slice(&out.stdout).unwrap();
-    for name in ["prices", "now", "cheapest", "grid", "error"] {
+    for name in ["prices", "now", "cheapest", "outlook", "grid", "error"] {
         assert_eq!(all[name]["type"], "object", "{name}");
     }
     assert!(
@@ -950,11 +950,11 @@ async fn schema_command_documents_every_output() {
 
 /// The committed schemas under `schema/` are the published contract. A change to an
 /// output type must show up there, in review. Regenerate with:
-/// `for n in prices now cheapest grid error; do vatio schema $n > schema/$n.json; done`
+/// `for n in prices now cheapest outlook grid error; do vatio schema $n > schema/$n.json; done`
 #[tokio::test(flavor = "multi_thread")]
 async fn committed_schemas_match_the_code() {
     let env = Env::new("schema-files").await;
-    for name in ["prices", "now", "cheapest", "grid", "error"] {
+    for name in ["prices", "now", "cheapest", "outlook", "grid", "error"] {
         let path = format!("{}/schema/{name}.json", env!("CARGO_MANIFEST_DIR"));
         let committed: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         let current: Value =
@@ -1043,6 +1043,7 @@ async fn mcp_server_exposes_the_same_documents_as_the_cli() {
             "find_cheapest_window",
             "get_current_price",
             "get_grid_status",
+            "get_price_outlook",
             "get_prices"
         ]
     );
@@ -1523,6 +1524,7 @@ async fn mcp_declares_the_published_schemas_and_rejects_bad_arguments() {
         ("get_prices", "prices"),
         ("get_current_price", "now"),
         ("find_cheapest_window", "cheapest"),
+        ("get_price_outlook", "outlook"),
         ("get_grid_status", "grid"),
     ] {
         let tools = reply(2)["result"]["tools"].as_array().unwrap();
@@ -1549,4 +1551,506 @@ async fn mcp_declares_the_published_schemas_and_rejects_bad_arguments() {
         );
     }
     assert_eq!(env.requests().await, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Outlook: published days plus vatio's estimate for the days after them
+// ---------------------------------------------------------------------------
+
+/// 22:30 in Madrid on Thursday 26 November 2026: Friday's prices are out.
+const OUTLOOK_NOW: &str = "2026-11-26T21:30:00Z";
+const WEEKDAYS_TO_27: [&str; 4] = ["2026-11-27", "2026-11-26", "2026-11-25", "2026-11-24"];
+const WEEKENDS_TO_22: [&str; 4] = ["2026-11-22", "2026-11-21", "2026-11-15", "2026-11-14"];
+
+/// The real hourly PVPC prices for 12 to 27 November 2026, in REData's shape, served
+/// whole for every request to the price widget that no other mock answers. The tool
+/// has to pick the days it asked for out of the answer.
+async fn serve_real_prices(env: &Env) {
+    Mock::given(method("GET"))
+        .and(path(PRICES_PATH))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(fixture("redata_prices_pvpc_2026-11-12_27.json")),
+        )
+        .with_priority(10)
+        .mount(&env.server)
+        .await;
+}
+
+/// The queries of every request received so far, in order.
+async fn queries(env: &Env) -> Vec<String> {
+    let requests = env.server.received_requests().await.unwrap();
+    requests
+        .iter()
+        .map(|r| r.url.query().unwrap_or_default().to_owned())
+        .collect()
+}
+
+/// Check a price window against its clock times and a mean worked out independently
+/// (in Python, from the rule's definition), allowing for rounding to the cent per MWh.
+#[track_caller]
+fn assert_window(window: &Value, start: &str, end: &str, eur_per_mwh: f64) {
+    assert_eq!(
+        (&window["start"], &window["end"]),
+        (&json!(start), &json!(end))
+    );
+    let mwh = window["mean_eur_per_mwh"].as_f64().unwrap();
+    let kwh = window["mean_eur_per_kwh"].as_f64().unwrap();
+    assert!((mwh - eur_per_mwh).abs() < 0.0051, "{mwh} != {eur_per_mwh}");
+    assert!((kwh - eur_per_mwh / 1000.0).abs() < 0.0000051, "{kwh}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_searches_published_and_estimated_days_on_real_prices() {
+    let mut env = Env::new("outlook").await;
+    env.now = OUTLOOK_NOW;
+    serve_real_prices(&env).await;
+
+    let (code, doc, err) = env.json(&["outlook", "3h"]).await;
+    assert_eq!((code, &err), (0, &Value::Null));
+    assert_eq!(doc["schema"], "vatio.outlook/v1");
+    assert_eq!(
+        (&doc["market"], &doc["area"], &doc["timezone"]),
+        (&json!("pvpc"), &json!("peninsula"), &json!("Europe/Madrid"))
+    );
+    assert_eq!(doc["at"], "2026-11-26T22:30:00+01:00");
+    assert_eq!(doc["duration_minutes"], 180);
+    assert_eq!(
+        doc["searched"],
+        json!({"from": "2026-11-26T22:30:00+01:00", "until": "2026-12-03T00:00:00+01:00"})
+    );
+    assert_eq!(
+        doc["method"],
+        json!({"name": "same_kind_days", "days_averaged": 4})
+    );
+    assert_eq!(doc["warnings"], json!([]));
+
+    // Day, kind, basis, the days averaged, and the cheapest three hours within the
+    // day: its start, its end and its mean in €/MWh.
+    let (weekdays, weekends, none) = (&WEEKDAYS_TO_27[..], &WEEKENDS_TO_22[..], &[][..]);
+    let night = Some(("03:00", "06:00", 166.6467));
+    let midday = Some(("12:00", "15:00", 79.695));
+    let expected = [
+        // 90 minutes are left of Thursday: no room for three hours.
+        ("2026-11-26", "weekday", "published", none, None),
+        (
+            "2026-11-27",
+            "weekday",
+            "published",
+            none,
+            Some(("03:00", "06:00", 191.6967)),
+        ),
+        ("2026-11-28", "weekend", "estimated", weekends, midday),
+        ("2026-11-29", "weekend", "estimated", weekends, midday),
+        ("2026-11-30", "weekday", "estimated", weekdays, night),
+        ("2026-12-01", "weekday", "estimated", weekdays, night),
+        ("2026-12-02", "weekday", "estimated", weekdays, night),
+    ];
+    let days = doc["days"].as_array().unwrap();
+    assert_eq!(days.len(), expected.len());
+    for (got, (day, kind, basis, from, cheapest)) in days.iter().zip(expected) {
+        assert_eq!(
+            (&got["day"], &got["kind"], &got["basis"]),
+            (&json!(day), &json!(kind), &json!(basis))
+        );
+        assert_eq!(got["estimated_from"], json!(from), "{day}");
+        match cheapest {
+            None => assert_eq!(got["cheapest"], Value::Null, "{day}"),
+            Some((start, end, mean)) => assert_window(
+                &got["cheapest"],
+                &format!("{day}T{start}:00+01:00"),
+                &format!("{day}T{end}:00+01:00"),
+                mean,
+            ),
+        }
+    }
+
+    // Saturday and Sunday are estimated alike; the tie goes to the earlier one.
+    let best = &doc["best"];
+    assert_window(
+        best,
+        "2026-11-28T12:00:00+01:00",
+        "2026-11-28T15:00:00+01:00",
+        79.695,
+    );
+    assert_eq!(
+        (&best["basis"], &best["starts_in_minutes"]),
+        (&json!("estimated"), &json!(37 * 60 + 30))
+    );
+
+    // A cold cache costs three requests: today, tomorrow, and one for the whole
+    // span of past days to estimate from, back to 16 days before today.
+    assert_eq!(
+        queries(&env).await,
+        [
+            "start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
+            "start_date=2026-11-27T00:00&end_date=2026-11-27T23:59&time_trunc=hour",
+            "start_date=2026-11-10T00:00&end_date=2026-11-25T23:59&time_trunc=hour",
+        ]
+    );
+    let sources = doc["sources"].as_array().unwrap();
+    assert_eq!(sources.len(), 3, "one per answer from Red Eléctrica");
+    for source in sources {
+        assert_eq!(
+            (&source["dataset"], &source["cached"], &source["updated_at"]),
+            (
+                &json!("prices"),
+                &json!(false),
+                &json!("2026-11-26T20:46:05+01:00")
+            )
+        );
+    }
+
+    // After that every day comes from the cache, the past ones included.
+    let (_, again, _) = env.json(&["outlook", "3h"]).await;
+    assert_eq!(env.requests().await, 3, "the second run asks for nothing");
+    assert_eq!(
+        (&again["best"], &again["days"]),
+        (&doc["best"], &doc["days"])
+    );
+    for source in again["sources"].as_array().unwrap() {
+        assert_eq!(source["cached"], true);
+    }
+    // A past day stored by the outlook is an ordinary cached day for `prices`.
+    let (_, past, _) = env.json(&["prices", "2026-11-14"]).await;
+    assert_eq!(
+        (&past["complete"], &past["sources"][0]["cached"]),
+        (&json!(true), &json!(true))
+    );
+    assert_eq!(env.requests().await, 3);
+    // --refresh goes back to the network for all of it, again in three requests.
+    let (_, fresh, _) = env.json(&["outlook", "3h", "--refresh"]).await;
+    assert_eq!(fresh["sources"][2]["cached"], false);
+    assert_eq!(env.requests().await, 6);
+
+    let human = String::from_utf8(env.run(&["outlook", "3h"]).await.stdout).unwrap();
+    assert!(
+        human.starts_with(
+            "Outlook for 3h on PVPC · searched Thu 26 Nov 22:30 → Wed 2 Dec 24:00 · \
+             €/kWh, energy term before taxes\n"
+        ),
+        "{human}"
+    );
+    for line in [
+        "    Thu 26 Nov  published  no room left for a 3h run\n",
+        "    Fri 27 Nov  published  03:00–06:00   0.19170 €/kWh\n",
+        "  ★ Sat 28 Nov  estimated  12:00–15:00   0.079",
+        "    Sun 29 Nov  estimated  12:00–15:00   0.079",
+        "    Wed 2 Dec   estimated  03:00–06:00   0.16665 €/kWh\n",
+        "  Best: Sat 28 Nov 12:00–15:00, estimated 0.079",
+        " €/kWh, starts in 37h30m.\n",
+        "  Estimated: the average of the last 4 days of the same kind (weekdays or weekend days). \
+         It is vatio's own estimate, not Red Eléctrica's; published prices for a day arrive the \
+         evening before.\n",
+    ] {
+        assert!(human.contains(line), "{line:?} is missing from:\n{human}");
+    }
+    assert!(
+        human.ends_with("  Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46\n"),
+        "{human}"
+    );
+    assert!(!human.contains('\u{1b}'), "{human}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_takes_any_duration_and_its_best_window_may_cross_midnight() {
+    let mut env = Env::new("outlook-durations").await;
+    env.now = OUTLOOK_NOW;
+    serve_real_prices(&env).await;
+
+    // One hour lands on the cheapest hour of each estimate, and still fits today.
+    let (_, doc, _) = env.json(&["outlook", "1h"]).await;
+    let cheapest = |i: usize| &doc["days"][i]["cheapest"];
+    assert_window(
+        cheapest(0),
+        "2026-11-26T23:00:00+01:00",
+        "2026-11-27T00:00:00+01:00",
+        285.18,
+    );
+    assert_window(
+        cheapest(2),
+        "2026-11-28T13:00:00+01:00",
+        "2026-11-28T14:00:00+01:00",
+        76.3225,
+    );
+    assert_window(
+        cheapest(4),
+        "2026-11-30T14:00:00+01:00",
+        "2026-11-30T15:00:00+01:00",
+        142.8025,
+    );
+
+    // 90 minutes over hourly prices: the cheap hour and the cheaper half of a neighbour.
+    let (_, doc, _) = env.json(&["outlook", "90m"]).await;
+    assert_window(
+        &doc["best"],
+        "2026-11-28T12:30:00+01:00",
+        "2026-11-28T14:00:00+01:00",
+        77.7475,
+    );
+    assert_window(
+        &doc["days"][0]["cheapest"],
+        "2026-11-26T22:30:00+01:00",
+        "2026-11-27T00:00:00+01:00",
+        296.27,
+    );
+
+    // A whole day: within each day there is only the day itself, but the best 24
+    // hours overall run from Sunday 03:00 to Monday 03:00.
+    let (_, doc, _) = env.json(&["outlook", "24h"]).await;
+    assert_eq!(doc["days"][0]["cheapest"], Value::Null);
+    assert_window(
+        &doc["days"][3]["cheapest"],
+        "2026-11-29T00:00:00+01:00",
+        "2026-11-30T00:00:00+01:00",
+        165.2419,
+    );
+    assert_window(
+        &doc["best"],
+        "2026-11-29T03:00:00+01:00",
+        "2026-11-30T03:00:00+01:00",
+        164.9258,
+    );
+    assert_eq!(doc["best"]["basis"], "estimated");
+    assert_eq!(env.requests().await, 3);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_before_tomorrow_is_published_estimates_from_tomorrow_on() {
+    // 19:40 on Thursday, an hour before Friday's prices come out.
+    let env = Env::new("outlook-early").await;
+    env.unpublished("2026-11-27").await;
+    serve_real_prices(&env).await;
+
+    let (code, doc, _) = env.json(&["outlook", "3h"]).await;
+    assert_eq!(code, 0);
+    assert_eq!(doc["at"], "2026-11-26T19:40:27+01:00");
+    assert_eq!(
+        doc["searched"],
+        json!({"from": "2026-11-26T19:40:00+01:00", "until": "2026-12-02T00:00:00+01:00"})
+    );
+    assert_eq!(doc["warnings"], json!([]));
+    let days = doc["days"].as_array().unwrap();
+    let column =
+        |key: &str| -> Vec<&str> { days.iter().map(|d| d[key].as_str().unwrap()).collect() };
+    assert_eq!(
+        column("day"),
+        [
+            "2026-11-26",
+            "2026-11-27",
+            "2026-11-28",
+            "2026-11-29",
+            "2026-11-30",
+            "2026-12-01"
+        ]
+    );
+    assert_eq!(
+        column("basis"),
+        [
+            "published",
+            "estimated",
+            "estimated",
+            "estimated",
+            "estimated",
+            "estimated"
+        ]
+    );
+    assert_eq!(
+        column("kind"),
+        [
+            "weekday", "weekday", "weekend", "weekend", "weekday", "weekday"
+        ]
+    );
+    // The days averaged end today: Friday is not a source, Monday the 23rd is.
+    let weekdays = json!(["2026-11-26", "2026-11-25", "2026-11-24", "2026-11-23"]);
+    assert_eq!(days[0]["estimated_from"], json!([]));
+    assert_eq!(days[1]["estimated_from"], weekdays);
+    assert_eq!(days[2]["estimated_from"], json!(WEEKENDS_TO_22));
+    assert_eq!(days[4]["estimated_from"], weekdays);
+
+    // What is left of today is searched from the current minute.
+    assert_window(
+        &days[0]["cheapest"],
+        "2026-11-26T21:00:00+01:00",
+        "2026-11-27T00:00:00+01:00",
+        332.6233,
+    );
+    assert_window(
+        &days[1]["cheapest"],
+        "2026-11-27T02:00:00+01:00",
+        "2026-11-27T05:00:00+01:00",
+        162.2142,
+    );
+    assert_window(
+        &days[5]["cheapest"],
+        "2026-12-01T02:00:00+01:00",
+        "2026-12-01T05:00:00+01:00",
+        162.2142,
+    );
+    assert_window(
+        &doc["best"],
+        "2026-11-28T12:00:00+01:00",
+        "2026-11-28T15:00:00+01:00",
+        79.695,
+    );
+    assert_eq!(doc["best"]["starts_in_minutes"], 40 * 60 + 20);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_says_so_when_tomorrow_cannot_be_checked() {
+    let mut env = Env::new("outlook-unchecked").await;
+    env.now = OUTLOOK_NOW;
+    Mock::given(method("GET"))
+        .and(path(PRICES_PATH))
+        .and(query_param("start_date", "2026-11-27T00:00"))
+        .respond_with(ResponseTemplate::new(500).set_body_json(json!({"errors": [{
+            "code": 500, "status": "500", "title": "Error", "detail": "Internal error."
+        }]})))
+        .mount(&env.server)
+        .await;
+    serve_real_prices(&env).await;
+
+    let (code, doc, _) = env.json(&["outlook", "3h"]).await;
+    assert_eq!(code, 0);
+    assert_eq!(
+        doc["warnings"],
+        json!([
+            "could not check prices for 2026-11-27, so that day is estimated: \
+             REData error 500: Internal error."
+        ])
+    );
+    assert_eq!(
+        (&doc["days"][1]["day"], &doc["days"][1]["basis"]),
+        (&json!("2026-11-27"), &json!("estimated"))
+    );
+    let human = String::from_utf8(env.run(&["outlook", "3h"]).await.stdout).unwrap();
+    assert!(
+        human.contains("  ! could not check prices for 2026-11-27"),
+        "{human}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_needs_four_published_days_of_each_kind() {
+    // Today and nine days before it: weekdays enough, but only one weekend.
+    let env = Env::new("outlook-short").await;
+    env.unpublished("2026-11-27").await;
+    let history: Vec<Value> = (17..=26)
+        .flat_map(|d| values(&format!("2026-11-{d}"), 3600, |i| THURSDAY[i as usize % 24]))
+        .collect();
+    env.serve_fixture(
+        "mercados/precios-mercados-tiempo-real",
+        200,
+        envelope(history, vec![]),
+    )
+    .await;
+
+    let (code, out, err) = env.json(&["outlook", "3h"]).await;
+    assert_eq!(
+        (code, &out, &err["error"]["code"]),
+        (3, &Value::Null, &json!("not_available"))
+    );
+    assert_eq!(
+        err["error"]["message"],
+        "too little price history for an outlook: 4 published weekend days are needed to \
+         estimate from, and only 2 were found from 2026-11-10 on"
+    );
+    let human = env.run(&["outlook", "3h"]).await;
+    assert_eq!(human.status.code(), Some(3));
+    assert!(human.stdout.is_empty());
+
+    // No answer at all for days published long ago is REData failing, which is a
+    // different thing from a short history.
+    let env = Env::new("outlook-no-history").await;
+    env.publish("2026-11-26", day_body("2026-11-26", &THURSDAY))
+        .await;
+    env.unpublished("2026-11-27").await;
+    Mock::given(method("GET"))
+        .and(path(PRICES_PATH))
+        .respond_with(ResponseTemplate::new(502).set_body_json(no_data_body()))
+        .with_priority(10)
+        .mount(&env.server)
+        .await;
+    let (code, _, err) = env.json(&["outlook", "3h"]).await;
+    assert_eq!(
+        (code, &err["error"]["code"], &err["error"]["retryable"]),
+        (4, &json!("upstream"), &json!(true))
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn outlook_rejects_a_bad_duration_before_any_request() {
+    let env = Env::new("outlook-usage").await;
+    for args in [
+        &["outlook", "soon"][..],
+        &["outlook", "25h"],
+        &["outlook", "PT90S"],
+        &["outlook"],
+        &["outlook", "3h", "--market", "spot"],
+    ] {
+        let (code, out, err) = env.json(args).await;
+        assert_eq!(
+            (code, &out, &err["error"]["code"]),
+            (2, &Value::Null, &json!("usage")),
+            "{args:?}"
+        );
+    }
+    assert_eq!(env.requests().await, 0);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn mcp_outlook_tool_returns_the_same_document_as_the_cli() {
+    let mut env = Env::new("outlook-mcp").await;
+    env.now = OUTLOOK_NOW;
+    serve_real_prices(&env).await;
+    let call = |id: i64, arguments: Value| json!({"jsonrpc": "2.0", "id": id, "method": "tools/call", "params": {"name": "get_price_outlook", "arguments": arguments}});
+
+    // The command fills the cache, so that the tool and a second run of the command
+    // then answer from the same state and must agree to the last field.
+    assert_eq!(env.json(&["outlook", "3h"]).await.0, 0);
+    let mut requests = mcp_initialize().to_vec();
+    requests.push(json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}));
+    requests.push(call(3, json!({"duration_minutes": 180})));
+    requests.push(call(4, json!({"duration_minutes": 0})));
+    requests.push(call(5, json!({"duration_minutes": 180, "market": "spot"})));
+    let replies = mcp_session(&env, requests).await;
+    let reply = |id: i64| replies.iter().find(|r| r["id"] == id).unwrap();
+    let (_, cli, _) = env.json(&["outlook", "3h"]).await;
+
+    assert_eq!(reply(3)["result"]["isError"], false);
+    let structured = &reply(3)["result"]["structuredContent"];
+    assert_eq!(structured["schema"], "vatio.outlook/v1");
+    assert_eq!(structured["best"]["basis"], "estimated");
+    assert_eq!(structured, &cli);
+    assert_eq!(env.requests().await, 3);
+
+    let tools = reply(2)["result"]["tools"].as_array().unwrap();
+    let tool = tools
+        .iter()
+        .find(|t| t["name"] == "get_price_outlook")
+        .unwrap();
+    assert_eq!(
+        (
+            &tool["annotations"]["readOnlyHint"],
+            &tool["annotations"]["idempotentHint"],
+            &tool["annotations"]["openWorldHint"]
+        ),
+        (&json!(true), &json!(true), &json!(true))
+    );
+    assert_eq!(tool["inputSchema"]["required"], json!(["duration_minutes"]));
+    assert!(
+        tool["description"]
+            .as_str()
+            .unwrap()
+            .contains("vatio's own estimate"),
+        "{tool}"
+    );
+    // The same bounds as the cheapest tool, and no other argument.
+    for id in [4, 5] {
+        let r = reply(id);
+        assert!(
+            r.get("error").is_some() || r["result"]["isError"] == true,
+            "{r}"
+        );
+    }
 }

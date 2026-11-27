@@ -14,6 +14,7 @@ pub const SCHEMA_PRICES: &str = "vatio.prices/v1";
 pub const SCHEMA_NOW: &str = "vatio.now/v1";
 pub const SCHEMA_CHEAPEST: &str = "vatio.cheapest/v1";
 pub const SCHEMA_GRID: &str = "vatio.grid/v1";
+pub const SCHEMA_OUTLOOK: &str = "vatio.outlook/v1";
 
 /// Prices come from the mainland (peninsular) system.
 pub const AREA_PRICES: &str = "peninsula";
@@ -282,6 +283,120 @@ pub struct Cheapest {
     pub saving_percent: Option<f64>,
     /// Things that limited the answer, in plain words. Empty when nothing did.
     pub warnings: Vec<String>,
+    pub sources: Vec<Source>,
+}
+
+/// What a price rests on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Basis {
+    /// Prices published by Red Eléctrica.
+    Published,
+    /// vatio's own estimate for a day whose prices are not published yet: the average
+    /// of recent published days of the same kind (see `method`). It is not Red
+    /// Eléctrica data, and not a forecast of the weather or the market.
+    Estimated,
+}
+
+/// The kind of day, which decides which past days an estimate is averaged from.
+/// Public holidays get no special treatment: one that falls between Monday and
+/// Friday counts as a weekday.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DayKind {
+    /// Monday to Friday.
+    Weekday,
+    /// Saturday or Sunday.
+    Weekend,
+}
+
+/// The time span an outlook searched.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct OutlookSpan {
+    /// Earliest allowed start: the start of the current minute.
+    pub from: LocalTime,
+    /// Latest allowed finish: the end of the last estimated day.
+    pub until: LocalTime,
+}
+
+/// The cheapest window of an outlook and what its price rests on.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, JsonSchema)]
+pub struct OutlookBest {
+    #[serde(flatten)]
+    pub window: PriceWindow,
+    /// `published` when every price inside the window was published by Red Eléctrica.
+    /// `estimated` when any part of the window falls on an estimated day: its mean
+    /// is then vatio's estimate, not Red Eléctrica data.
+    pub basis: Basis,
+}
+
+/// One day of an outlook.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct OutlookDay {
+    /// Calendar day, `YYYY-MM-DD`.
+    pub day: String,
+    pub kind: DayKind,
+    /// `published` for today, and for tomorrow once Red Eléctrica has published it.
+    /// `estimated` for the days after the last published one.
+    pub basis: Basis,
+    /// The cheapest window that lies entirely within this day; for today, within what
+    /// is left of it. Null when a run of the requested length does not fit there. On
+    /// an estimated day its mean is vatio's estimate, not Red Eléctrica data.
+    pub cheapest: Option<PriceWindow>,
+    /// The published days this day's estimate is the average of, `YYYY-MM-DD`, newest
+    /// first. Empty for a published day.
+    pub estimated_from: Vec<String>,
+}
+
+/// How the days without published prices were estimated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+pub struct OutlookMethod {
+    /// Always `same_kind_days`: each clock hour of an estimated day is priced at the
+    /// mean of that clock hour over the most recent published days of the same kind,
+    /// weekdays for a weekday and weekend days for a weekend day.
+    #[schemars(extend("const" = "same_kind_days"))]
+    pub name: &'static str,
+    /// How many published days each estimate is the average of.
+    pub days_averaged: u32,
+}
+
+/// The cheapest time to run something for a fixed duration over the next several days.
+///
+/// Red Eléctrica publishes prices one day ahead, so only today and, from the evening,
+/// tomorrow have published prices. The days after that are estimated by vatio from
+/// recent published days (see `method`), and published and estimated days are
+/// searched together. Everything marked `estimated` is vatio's own estimate, not Red
+/// Eléctrica data and not a forecast: check again once the day is published.
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema)]
+pub struct Outlook {
+    /// Always `vatio.outlook/v1`.
+    #[schemars(extend("const" = SCHEMA_OUTLOOK))]
+    pub schema: &'static str,
+    /// Always `pvpc`: the outlook covers the regulated household price only.
+    #[schemars(extend("const" = "pvpc"))]
+    pub market: Market,
+    /// Always `peninsula`.
+    #[schemars(extend("const" = AREA_PRICES))]
+    pub area: &'static str,
+    /// Always `Europe/Madrid`.
+    #[schemars(extend("const" = "Europe/Madrid"))]
+    pub timezone: &'static str,
+    /// The instant this answer was produced.
+    pub at: LocalTime,
+    /// Length of the run asked for.
+    pub duration_minutes: i64,
+    pub searched: OutlookSpan,
+    /// The cheapest window in the whole span. It may cross midnight, and so differ
+    /// from every entry of `days`.
+    pub best: OutlookBest,
+    /// Every day searched, in order: the published days first, then the estimated ones.
+    pub days: Vec<OutlookDay>,
+    pub method: OutlookMethod,
+    /// Abnormal conditions that affected the answer, in plain words. Empty when
+    /// there were none.
+    pub warnings: Vec<String>,
+    /// The published prices used, both those searched and those the estimates are
+    /// averaged from.
     pub sources: Vec<Source>,
 }
 
