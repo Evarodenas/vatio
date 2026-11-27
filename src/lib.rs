@@ -12,6 +12,7 @@ pub mod error;
 pub mod grid;
 pub mod mcp;
 pub mod model;
+pub mod outlook;
 pub mod redata;
 pub mod render;
 pub mod service;

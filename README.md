@@ -23,8 +23,9 @@ Cheapest 3h on PVPC · searched Thu 26 Nov 21:10 → Fri 27 Nov 24:00 · €/kWh
 | `vatio now` | What does electricity cost right now, and is that low, mid or high for today? |
 | `vatio prices [today\|tomorrow\|YYYY-MM-DD]` | Every price of a day, with min, mean and max. |
 | `vatio cheapest <duration>` | When should I run something that takes this long? |
+| `vatio outlook <duration>` | Which day and hour is cheapest over the next several days? Days not published yet are estimated. |
 | `vatio grid` | How much is Spain consuming right now, and how renewable is the mix? |
-| `vatio mcp` | The same four answers as tools for an AI agent (MCP over stdio). |
+| `vatio mcp` | The same five answers as tools for an AI agent (MCP over stdio). |
 | `vatio schema [name]` | JSON Schemas of everything the tool outputs. |
 
 Add `--json` to any of them for machine-readable output, and `--market spot` for the
@@ -79,6 +80,50 @@ checked. That holds for hourly PVPC, for the quarter-hourly spot market, for dur
 that are not a multiple of either, and across the 23- and 25-hour days when the clocks
 change. The test suite checks it against trying every possible start.
 
+### The outlook
+
+Prices are published one day ahead, so `cheapest` cannot see past tomorrow.
+`vatio outlook 3h` can: it searches the published days (today, and tomorrow once it is
+out) together with an estimate for the five days after them, and says which is which.
+This is its real output for the evening of 26 November 2026:
+
+```console
+$ vatio outlook 3h
+Outlook for 3h on PVPC · searched Thu 26 Nov 22:30 → Wed 2 Dec 24:00 · €/kWh, energy term before taxes
+
+    Thu 26 Nov  published  no room left for a 3h run
+    Fri 27 Nov  published  03:00–06:00   0.19170 €/kWh
+    Sat 28 Nov  estimated  12:00–15:00   0.05896 €/kWh
+  ★ Sun 29 Nov  estimated  11:00–14:00   0.05155 €/kWh
+    Mon 30 Nov  estimated  03:00–06:00   0.14956 €/kWh
+    Tue 1 Dec   estimated  03:00–06:00   0.14956 €/kWh
+    Wed 2 Dec   estimated  03:00–06:00   0.14956 €/kWh
+
+  Best: Sun 29 Nov 11:00–14:00, estimated 0.05155 €/kWh, starts in 60h30m.
+  Estimated: for each hour, the average of two means over days of the same kind (weekdays, Saturdays or Sundays), the last 4 and the last 12. It is vatio's own estimate, not Red Eléctrica's; published prices for a day arrive the evening before.
+  Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46
+```
+
+Each line is the cheapest window inside that day, and the star marks the best of all;
+the best window may also cross midnight, in which case only the `Best` line shows it.
+Durations are written as for `cheapest`. The outlook is for PVPC only.
+
+The estimate is plain on purpose. A day is a weekday (Monday to Friday), a Saturday or a
+Sunday, with no holiday calendar. Each clock hour of an estimated day is priced at the
+average of two means of that hour over published days of the same kind: one over the
+last 4 and one over the last 12, which include the 4, counting today and tomorrow when
+they are published. The figures marked `estimated` are vatio's own, not Red Eléctrica
+data: look again once the day is published. Twelve Sundays reach twelve weeks back, so
+the first run fetches up to 90 past days, in at most three requests; they are cached
+like any other day, so later runs do not ask for them again.
+
+In a backtest over 1,877 evenings (October 2021 to November 2026), choosing the day and
+hour for a 3-hour run this way captured about 85% of the saving that perfect hindsight
+would have, where running at a random time captures 0%. It was 93% over 2025 and 2026,
+and between 65% and 90% in the four years before, when prices swung more from one day to
+the next. It is an estimate from recent days, not a forecast of the weather or the
+market.
+
 ## Install
 
 Until the first release is tagged, build from source. It needs a recent Rust toolchain;
@@ -107,10 +152,10 @@ Shell completions: `vatio completions zsh > ~/.zfunc/_vatio` (also `bash`, `fish
 
 ### As an MCP server
 
-`vatio mcp` serves four read-only tools over stdio: `get_current_price`, `get_prices`,
-`find_cheapest_window` and `get_grid_status`. Each returns, as structured content, the
-same document the matching command prints with `--json`, and declares the same schema
-that `vatio schema` prints for it.
+`vatio mcp` serves five read-only tools over stdio: `get_current_price`, `get_prices`,
+`find_cheapest_window`, `get_price_outlook` and `get_grid_status`. Each returns, as
+structured content, the same document the matching command prints with `--json`, and
+declares the same schema that `vatio schema` prints for it.
 
 ```sh
 claude mcp add --transport stdio --scope user vatio -- vatio mcp
@@ -133,7 +178,8 @@ Claude Desktop needs the absolute path to the binary (`which vatio`).
 The JSON output is a contract:
 
 - **One object per run on stdout**, each naming its own version in `schema`
-  (`vatio.prices/v1`, `vatio.now/v1`, `vatio.cheapest/v1`, `vatio.grid/v1`).
+  (`vatio.prices/v1`, `vatio.now/v1`, `vatio.cheapest/v1`, `vatio.outlook/v1`,
+  `vatio.grid/v1`).
   The schemas are committed under [`schema/`](schema) and a test fails if code and
   schema drift apart. From the first release on, fields are only ever added within a
   version.
@@ -205,7 +251,8 @@ in each entry of `sources` in JSON. If you republish a figure, keep them with it
 ## Not in scope
 
 Deliberately left out, to keep the tool small: bill simulation and taxes, tariff
-comparison, price forecasting, device control, notifications, a hosted service, and
+comparison, price forecasting from weather or market models (the outlook is a plain
+average of recent days), device control, notifications, a hosted service, and
 other countries. Candidates for later, in rough order: non-peninsular price zones,
 allowed-hours masks for the window search (for example "only at night"), and intraday
 generation through an optional ESIOS token.
@@ -223,7 +270,7 @@ Tests never touch the network. `VATIO_API_URL` points the tool at another server
 deterministic. After changing an output type, regenerate the committed schemas:
 
 ```sh
-for n in prices now cheapest grid error; do cargo run -q -- schema $n > schema/$n.json; done
+for n in prices now cheapest outlook grid error; do cargo run -q -- schema $n > schema/$n.json; done
 ```
 
 Releases are built by [dist](https://github.com/axodotdev/cargo-dist); see
