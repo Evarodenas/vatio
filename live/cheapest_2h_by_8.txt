@@ -1,9 +1,10 @@
-Cheapest 2h on PVPC · searched Thu 26 Nov 22:39 → Fri 27 Nov 08:00 · €/kWh, energy term before taxes
+Cheapest 2h on PVPC · searched Fri 27 Nov 15:06 → Fri 27 Nov 24:00 · €/kWh, energy term before taxes
 
-  ★ Fri 27 Nov 04:00–06:00   0.19007 €/kWh   starts in 5h21m
-    Fri 27 Nov 02:00–04:00   0.19642 €/kWh   starts in 3h21m
-    Fri 27 Nov 00:00–02:00   0.20505 €/kWh   starts in 1h21m
+  ★ Fri 27 Nov 15:06–17:06   0.21755 €/kWh   start now
+    Fri 27 Nov 22:00–24:00   0.25608 €/kWh   starts in 6h54m
+    Fri 27 Nov 17:06–19:06   0.33582 €/kWh   starts in 2h
 
-  Starting now (22:39–00:39) would average 0.26783 €/kWh.
-  Waiting saves 0.07776 €/kWh (29.0%).
+  Starting right away is the cheapest option.
+  Tomorrow's prices are not published yet; a cheaper slot may appear once they are.
+  ! prices are published only until 2026-11-28T00:00:00+01:00; the search stops there, not at the requested 2026-11-28T08:00:00+01:00
   Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46

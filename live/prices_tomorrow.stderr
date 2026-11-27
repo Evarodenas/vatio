@@ -1,0 +1,3 @@
+{"error":{"code":"not_available","message":"PVPC prices for 2026-11-28 are not published yet","hint":"Red Eléctrica publishes next-day PVPC in the evening, around 20:45 to 20:50 Madrid time; ask again after that","retryable":true}}
+error: PVPC prices for 2026-11-28 are not published yet
+  hint: Red Eléctrica publishes next-day PVPC in the evening, around 20:45 to 20:50 Madrid time; ask again after that

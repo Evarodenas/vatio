@@ -5,58 +5,52 @@
   "timezone": "Europe/Madrid",
   "duration_minutes": 120,
   "searched": {
-    "from": "2026-11-26T22:39:00+01:00",
-    "until": "2026-11-27T08:00:00+01:00",
-    "tomorrow": "included"
+    "from": "2026-11-27T15:06:00+01:00",
+    "until": "2026-11-28T00:00:00+01:00",
+    "tomorrow": "not_published"
   },
   "best": {
-    "start": "2026-11-27T04:00:00+01:00",
-    "end": "2026-11-27T06:00:00+01:00",
-    "mean_eur_per_mwh": 190.07,
-    "mean_eur_per_kwh": 0.19007,
-    "starts_in_minutes": 321
+    "start": "2026-11-27T15:06:00+01:00",
+    "end": "2026-11-27T17:06:00+01:00",
+    "mean_eur_per_mwh": 217.55,
+    "mean_eur_per_kwh": 0.21755,
+    "starts_in_minutes": 0
   },
   "alternatives": [
     {
-      "start": "2026-11-27T02:00:00+01:00",
-      "end": "2026-11-27T04:00:00+01:00",
-      "mean_eur_per_mwh": 196.42,
-      "mean_eur_per_kwh": 0.19642,
-      "starts_in_minutes": 201
+      "start": "2026-11-27T22:00:00+01:00",
+      "end": "2026-11-28T00:00:00+01:00",
+      "mean_eur_per_mwh": 256.08,
+      "mean_eur_per_kwh": 0.25609,
+      "starts_in_minutes": 414
     },
     {
-      "start": "2026-11-27T00:00:00+01:00",
-      "end": "2026-11-27T02:00:00+01:00",
-      "mean_eur_per_mwh": 205.05,
-      "mean_eur_per_kwh": 0.20504,
-      "starts_in_minutes": 81
+      "start": "2026-11-27T17:06:00+01:00",
+      "end": "2026-11-27T19:06:00+01:00",
+      "mean_eur_per_mwh": 335.82,
+      "mean_eur_per_kwh": 0.33582,
+      "starts_in_minutes": 120
     }
   ],
   "earliest": {
-    "start": "2026-11-26T22:39:00+01:00",
-    "end": "2026-11-27T00:39:00+01:00",
-    "mean_eur_per_mwh": 267.83,
-    "mean_eur_per_kwh": 0.26783,
+    "start": "2026-11-27T15:06:00+01:00",
+    "end": "2026-11-27T17:06:00+01:00",
+    "mean_eur_per_mwh": 217.55,
+    "mean_eur_per_kwh": 0.21755,
     "starts_in_minutes": 0
   },
-  "saving_eur_per_kwh": 0.07776,
-  "saving_percent": 29.0,
-  "warnings": [],
+  "saving_eur_per_kwh": 0.0,
+  "saving_percent": 0.0,
+  "warnings": [
+    "prices are published only until 2026-11-28T00:00:00+01:00; the search stops there, not at the requested 2026-11-28T08:00:00+01:00"
+  ],
   "sources": [
-    {
-      "name": "Red Eléctrica de España (REData)",
-      "dataset": "prices",
-      "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
-      "updated_at": "2026-11-25T20:46:01+01:00",
-      "fetched_at": "2026-11-26T22:39:16+01:00",
-      "cached": true
-    },
     {
       "name": "Red Eléctrica de España (REData)",
       "dataset": "prices",
       "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-27T00:00&end_date=2026-11-27T23:59&time_trunc=hour",
       "updated_at": "2026-11-26T20:46:05+01:00",
-      "fetched_at": "2026-11-26T22:39:16+01:00",
+      "fetched_at": "2026-11-27T15:06:02+01:00",
       "cached": true
     }
   ]

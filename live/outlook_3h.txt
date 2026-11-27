@@ -1,0 +1,12 @@
+Outlook for 3h on PVPC · searched Fri 27 Nov 15:06 → Wed 2 Dec 24:00 · €/kWh, energy term before taxes
+
+    Fri 27 Nov  published  15:06–18:06   0.24275 €/kWh
+    Sat 28 Nov  estimated  12:00–15:00   0.05896 €/kWh
+  ★ Sun 29 Nov  estimated  11:00–14:00   0.05155 €/kWh
+    Mon 30 Nov  estimated  03:00–06:00   0.14956 €/kWh
+    Tue 1 Dec   estimated  03:00–06:00   0.14956 €/kWh
+    Wed 2 Dec   estimated  03:00–06:00   0.14956 €/kWh
+
+  Best: Sun 29 Nov 11:00–14:00, estimated 0.05155 €/kWh, starts in 43h54m.
+  Estimated: for each hour, the average of two means over days of the same kind (weekdays, Saturdays or Sundays), the last 4 and the last 12. It is vatio's own estimate, not Red Eléctrica's; published prices for a day arrive the evening before.
+  Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46

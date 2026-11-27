@@ -1,25 +1,25 @@
-Spain's grid · Thu 26 Nov 22:39
+Spain's grid · Fri 27 Nov 15:06
 
-  Demand  34,488 MW at 22:25  ·  forecast 34,391  ·  scheduled 34,445
-          today so far: peak 38,955 MW at 20:35  ·  low 24,455 MW at 04:15
+  Demand  37,397 MW at 14:50  ·  forecast 37,572  ·  scheduled 33,174
+          today so far: peak 38,938 MW at 10:15  ·  low 24,695 MW at 04:40
 
-  Generation on Wed 25 Nov (latest daily figures, provisional)  ·  892.2 GWh
-  66.3% renewable  ·  76 g CO₂/kWh
+  Generation on Thu 26 Nov (latest daily figures, provisional)  ·  872.1 GWh
+  59.9% renewable  ·  99 g CO₂/kWh
 
-    Wind                   389.7 GWh   43.7%  ██████████████████████
-    Nuclear                145.8 GWh   16.3%  ████████▎
-    Combined-cycle gas     101.7 GWh   11.4%  █████▊
-    Solar PV                99.2 GWh   11.1%  █████▋
-    Hydro                   87.4 GWh    9.8%  ████▉
-    Cogeneration            28.5 GWh    3.2%  █▋
-    Biofuels                11.2 GWh    1.3%  ▋
-    Steam turbine           10.1 GWh    1.1%  ▋
-    Combustion engines       5.8 GWh    0.6%  ▍
-    Coal                     4.6 GWh    0.5%  ▎
-    Non-renewable waste      3.3 GWh    0.4%  ▏
-    Renewable waste          2.4 GWh    0.3%  ▏
-    Gas turbine              1.3 GWh    0.1%  ▏
-    Solar thermal            1.2 GWh    0.1%  ▏
+    Wind                   260.8 GWh   29.9%  ██████████████████████
+    Nuclear                145.9 GWh   16.7%  ████████████▎
+    Combined-cycle gas     138.5 GWh   15.9%  ███████████▋
+    Solar PV               130.9 GWh   15.0%  ███████████
+    Hydro                  112.0 GWh   12.8%  █████████▌
+    Cogeneration            38.6 GWh    4.4%  ███▎
+    Biofuels                12.3 GWh    1.4%  █
+    Steam turbine           10.4 GWh    1.2%  ▉
+    Combustion engines       6.8 GWh    0.8%  ▋
+    Coal                     5.4 GWh    0.6%  ▌
+    Solar thermal            3.5 GWh    0.4%  ▎
+    Non-renewable waste      3.5 GWh    0.4%  ▎
+    Renewable waste          2.6 GWh    0.3%  ▎
+    Gas turbine              1.1 GWh    0.1%  ▏
 
   Source: Red Eléctrica de España (REData)
-  Updated: demand Thu 26 Nov 22:32 · generation Thu 26 Nov 08:26 · emissions Thu 26 Nov 08:26
+  Updated: demand Fri 27 Nov 14:57 · generation Thu 26 Nov 08:26 · emissions Thu 26 Nov 08:26

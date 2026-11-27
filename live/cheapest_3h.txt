@@ -1,7 +1,7 @@
-Cheapest 3h on PVPC · searched Thu 26 Nov 22:39 → Fri 27 Nov 24:00 · €/kWh, energy term before taxes
+Cheapest 3h on PVPC · searched Fri 27 Nov 15:06 → Fri 27 Nov 24:00 · €/kWh, energy term before taxes
 
-  ★ Fri 27 Nov 03:00–06:00   0.19170 €/kWh   starts in 4h21m
+  ★ Fri 27 Nov 15:06–18:06   0.24275 €/kWh   start now
 
-  Starting now (22:39–01:39) would average 0.24602 €/kWh.
-  Waiting saves 0.05432 €/kWh (22.1%).
+  Starting right away is the cheapest option.
+  Tomorrow's prices are not published yet; a cheaper slot may appear once they are.
   Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46

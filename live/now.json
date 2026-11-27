@@ -2,46 +2,46 @@
   "schema": "vatio.now/v1",
   "market": "pvpc",
   "area": "peninsula",
-  "at": "2026-11-26T22:39:16+01:00",
+  "at": "2026-11-27T15:06:02+01:00",
   "timezone": "Europe/Madrid",
   "current": {
-    "start": "2026-11-26T22:00:00+01:00",
-    "end": "2026-11-26T23:00:00+01:00",
-    "eur_per_mwh": 318.45,
-    "eur_per_kwh": 0.31845
+    "start": "2026-11-27T15:00:00+01:00",
+    "end": "2026-11-27T16:00:00+01:00",
+    "eur_per_mwh": 191.94,
+    "eur_per_kwh": 0.19194
   },
   "next": {
-    "start": "2026-11-26T23:00:00+01:00",
-    "end": "2026-11-27T00:00:00+01:00",
-    "eur_per_mwh": 285.18,
-    "eur_per_kwh": 0.28518
+    "start": "2026-11-27T16:00:00+01:00",
+    "end": "2026-11-27T17:00:00+01:00",
+    "eur_per_mwh": 233.99,
+    "eur_per_kwh": 0.23399
   },
-  "rank": 20,
+  "rank": 4,
   "rank_of": 24,
-  "level": "high",
+  "level": "low",
   "today": {
     "min": {
-      "start": "2026-11-26T14:00:00+01:00",
-      "end": "2026-11-26T15:00:00+01:00",
-      "eur_per_mwh": 132.47,
-      "eur_per_kwh": 0.13247
+      "start": "2026-11-27T14:00:00+01:00",
+      "end": "2026-11-27T15:00:00+01:00",
+      "eur_per_mwh": 178.59,
+      "eur_per_kwh": 0.17859
     },
     "max": {
-      "start": "2026-11-26T20:00:00+01:00",
-      "end": "2026-11-26T21:00:00+01:00",
-      "eur_per_mwh": 404.25,
-      "eur_per_kwh": 0.40425
+      "start": "2026-11-27T18:00:00+01:00",
+      "end": "2026-11-27T19:00:00+01:00",
+      "eur_per_mwh": 379.63,
+      "eur_per_kwh": 0.37963
     },
-    "mean_eur_per_mwh": 244.02,
-    "mean_eur_per_kwh": 0.24402
+    "mean_eur_per_mwh": 256.2,
+    "mean_eur_per_kwh": 0.2562
   },
   "sources": [
     {
       "name": "Red Eléctrica de España (REData)",
       "dataset": "prices",
-      "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-26T00:00&end_date=2026-11-26T23:59&time_trunc=hour",
-      "updated_at": "2026-11-25T20:46:01+01:00",
-      "fetched_at": "2026-11-26T22:39:16+01:00",
+      "url": "https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=2026-11-27T00:00&end_date=2026-11-27T23:59&time_trunc=hour",
+      "updated_at": "2026-11-26T20:46:05+01:00",
+      "fetched_at": "2026-11-27T15:06:02+01:00",
       "cached": false
     }
   ]
