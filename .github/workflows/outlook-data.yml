@@ -2,10 +2,9 @@ name: Outlook data
 
 # Collects the history used to backtest a multi-day price outlook: prices, generation
 # and demand from REData, and archived weather forecasts from Open-Meteo. Pushing to
-# the `outlook-data` branch runs it and commits the CSV files under `data/`.
+# it by hand from the Actions tab commits the CSV files under `data/`.
 on:
-  push:
-    branches: [outlook-data]
+  workflow_dispatch:
 
 permissions:
   contents: write
