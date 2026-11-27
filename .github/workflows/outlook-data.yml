@@ -2,9 +2,12 @@ name: Outlook data
 
 # Collects the history used to backtest a multi-day price outlook: prices, generation
 # and demand from REData, and archived weather forecasts from Open-Meteo. Pushing to
-# it by hand from the Actions tab commits the CSV files under `data/`.
+# it by hand, or changing `data/REQUEST` on this branch, commits the CSV files under `data/`.
 on:
   workflow_dispatch:
+  push:
+    branches: [outlook-data]
+    paths: [data/REQUEST]
 
 permissions:
   contents: write
@@ -21,10 +24,11 @@ jobs:
       - uses: actions/checkout@v7
       - name: Collect
         run: |
-          # Second pass: the year before, kept in its own folder so the first pass is not overwritten.
-          mkdir -p data/y2024
-          python3 tools/fetch_outlook_data.py data/y2024 2024-01-01 2024-12-31 prices,mix,demand,weather
-          ls -la data data/y2024
+          # What to fetch is written in data/REQUEST: output folder, first day, last day, datasets.
+          read -r OUT START END ONLY < data/REQUEST
+          mkdir -p "data/$OUT"
+          python3 tools/fetch_outlook_data.py "data/$OUT" "$START" "$END" "$ONLY"
+          ls -la "data/$OUT"
       - name: Commit
         if: always()
         run: |
