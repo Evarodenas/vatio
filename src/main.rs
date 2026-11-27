@@ -95,9 +95,10 @@ enum Command {
     /// The cheapest time to run something over the next several days (PVPC)
     ///
     /// Searches the published prices (today, and tomorrow once it is out) together
-    /// with vatio's own estimate for the five days after them: the average of the
-    /// last four days of the same kind, weekdays or weekend days. Every day is
-    /// labelled as published or estimated.
+    /// with vatio's own estimate for the five days after them: for each hour, the
+    /// average of two means over days of the same kind (weekdays, Saturdays or
+    /// Sundays), the last 4 and the last 12. Every day is labelled as published or
+    /// estimated.
     Outlook {
         /// How long the run lasts: 3h, 90m, 2h30m, PT45M. A bare number means hours
         duration: String,

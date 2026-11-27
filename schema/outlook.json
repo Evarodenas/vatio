@@ -10,7 +10,7 @@
         },
         {
           "const": "estimated",
-          "description": "vatio's own estimate for a day whose prices are not published yet: the average\nof recent published days of the same kind (see `method`). It is not Red\nEléctrica data, and not a forecast of the weather or the market.",
+          "description": "vatio's own estimate for a day whose prices are not published yet, made from\nrecent published days of the same kind (see `method`). It is not Red\nEléctrica data, and not a forecast of the weather or the market.",
           "type": "string"
         }
       ]
@@ -26,19 +26,13 @@
       "type": "string"
     },
     "DayKind": {
-      "description": "The kind of day, which decides which past days an estimate is averaged from.\nPublic holidays get no special treatment: one that falls between Monday and\nFriday counts as a weekday.",
-      "oneOf": [
-        {
-          "const": "weekday",
-          "description": "Monday to Friday.",
-          "type": "string"
-        },
-        {
-          "const": "weekend",
-          "description": "Saturday or Sunday.",
-          "type": "string"
-        }
-      ]
+      "description": "The kind of day, which decides which past days an estimate is averaged from: a\n`weekday` is any day from Monday to Friday. Public holidays get no special\ntreatment: one that falls between Monday and Friday counts as a weekday.",
+      "enum": [
+        "weekday",
+        "saturday",
+        "sunday"
+      ],
+      "type": "string"
     },
     "Market": {
       "description": "Which price series to use.",
@@ -120,7 +114,7 @@
           "type": "string"
         },
         "estimated_from": {
-          "description": "The published days this day's estimate is the average of, `YYYY-MM-DD`, newest\nfirst. Empty for a published day.",
+          "description": "The published days this day's estimate is made from, `YYYY-MM-DD`, newest\nfirst: the days of the steady mean (see `method`), of which the first\n`method.fresh_days` are those of the fresh mean. Empty for a published day.",
           "items": {
             "type": "string"
           },
@@ -142,21 +136,28 @@
     "OutlookMethod": {
       "description": "How the days without published prices were estimated.",
       "properties": {
-        "days_averaged": {
-          "description": "How many published days each estimate is the average of.",
+        "fresh_days": {
+          "description": "How many published days the fresh mean is over. An estimate needs that many.",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
         },
         "name": {
-          "const": "same_kind_days",
-          "description": "Always `same_kind_days`: each clock hour of an estimated day is priced at the\nmean of that clock hour over the most recent published days of the same kind,\nweekdays for a weekday and weekend days for a weekend day.",
+          "const": "fresh_and_steady_mean",
+          "description": "Always `fresh_and_steady_mean`: each clock hour of an estimated day is priced\nat the average of two means of that clock hour over the most recent published\ndays of the same kind (weekdays, Saturdays or Sundays): a fresh mean over the\nlast `fresh_days` of them and a steady mean over the last `steady_days`, which\ninclude the fresh ones.",
           "type": "string"
+        },
+        "steady_days": {
+          "description": "How many published days the steady mean is over. Where fewer of the kind are\nfound, going back at most 90 days before today, it is over as many as there\nare, and `estimated_from` lists them.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
         }
       },
       "required": [
         "name",
-        "days_averaged"
+        "fresh_days",
+        "steady_days"
       ],
       "type": "object"
     },

@@ -30,8 +30,8 @@ day-ahead wholesale price (quarter-hourly). Next-day PVPC appears in the evening
 20:50 Madrid time; before that, requests for tomorrow fail with code 'not_available' and \
 retryable=true. To decide when to run an appliance or charge a vehicle, call \
 find_cheapest_window instead of working it out from get_prices. To plan further ahead than \
-tomorrow, call get_price_outlook: beyond the published days it searches vatio's own estimate (the \
-average of recent days of the same kind, not Red Eléctrica data), and every window it returns is \
+tomorrow, call get_price_outlook: beyond the published days it searches vatio's own estimate \
+(averages of recent days of the same kind, not Red Eléctrica data), and every window it returns is \
 labelled 'published' or 'estimated'; say which when you report one. When you report a figure, name \
 the source and its updated_at from the result's `sources`. When a tool fails, its result text is \
 JSON: {\"error\":{\"code\",\"message\",\"hint\",\"retryable\"}}; malformed arguments are rejected \
@@ -170,7 +170,7 @@ impl Server {
 
     #[tool(
         name = "get_price_outlook",
-        description = "The cheapest continuous time window to run something for a given duration in Spain over the next several days, at the regulated household price (PVPC). Searches the published prices (today, and tomorrow once it is out) together with an estimate for the five days after them, and returns the best window overall plus the cheapest window of each day. Each is labelled 'published' or 'estimated'. Estimated prices are vatio's own estimate, the average of the last 4 days of the same kind (weekdays or weekend days): not Red Eléctrica data and not a forecast, so check again once the day is published. Use for 'which day this week is cheapest to run the washing machine?'; for today and tomorrow only, find_cheapest_window is exact.",
+        description = "The cheapest continuous time window to run something for a given duration in Spain over the next several days, at the regulated household price (PVPC). Searches the published prices (today, and tomorrow once it is out) together with an estimate for the five days after them, and returns the best window overall plus the cheapest window of each day. Each is labelled 'published' or 'estimated'. Estimated prices are vatio's own estimate, for each hour the average of two means over days of the same kind (weekdays, Saturdays or Sundays), the last 4 and the last 12: not Red Eléctrica data and not a forecast, so check again once the day is published. Use for 'which day this week is cheapest to run the washing machine?'; for today and tomorrow only, find_cheapest_window is exact.",
         annotations(
             title = "Cheapest time to run something in the coming days",
             read_only_hint = true,

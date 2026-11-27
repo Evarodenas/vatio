@@ -416,10 +416,11 @@ pub fn outlook(doc: &Outlook) -> String {
     );
     let _ = writeln!(
         out,
-        "  {DIM}Estimated: the average of the last {} days of the same kind (weekdays or weekend \
-         days). It is vatio's own estimate, not Red Eléctrica's; published prices for a day \
-         arrive the evening before.{DIM:#}",
-        doc.method.days_averaged
+        "  {DIM}Estimated: for each hour, the average of two means over days of the same kind \
+         (weekdays, Saturdays or Sundays), the last {} and the last {}. It is vatio's own \
+         estimate, not Red Eléctrica's; published prices for a day arrive the evening \
+         before.{DIM:#}",
+        doc.method.fresh_days, doc.method.steady_days
     );
     for warning in &doc.warnings {
         let _ = writeln!(out, "  {RED}!{RED:#} {warning}");

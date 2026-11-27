@@ -54,7 +54,7 @@ hour (`02:00+02:00`, then `02:00+01:00`).
 
 | File | What |
 |---|---|
-| `redata_prices_pvpc_2026-11-12_27.json` | The hourly PVPC series (id `1001`) for 12 to 27 November 2026 in REData's shape. Every value object is copied unchanged from two raw answers of the live API taken on the evening of 26 November (a 31-day range and the answer for the 27th); the envelope around them was put together by hand and the spot series left out. Used by the `outlook` tests, whose expected figures were worked out separately from the rule's definition. |
+| `redata_prices_pvpc_2026-09-01_11-27.json` | The hourly PVPC series (id `1001`) for 1 September to 27 November 2026 in REData's shape: 2,113 values, since 25 October has 25 hours. Every value object is copied unchanged from four raw answers of the live API (September, October, a 31-day range taken on the evening of 26 November 2026, and the answer for the 27th); the envelope around them was put together by hand and the spot series left out. Used by the `outlook` tests, whose expected figures were worked out separately from the rule's definition. |
 
 ## Generated
 

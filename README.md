@@ -93,14 +93,14 @@ Outlook for 3h on PVPC · searched Thu 26 Nov 22:30 → Wed 2 Dec 24:00 · €/k
 
     Thu 26 Nov  published  no room left for a 3h run
     Fri 27 Nov  published  03:00–06:00   0.19170 €/kWh
-  ★ Sat 28 Nov  estimated  12:00–15:00   0.07969 €/kWh
-    Sun 29 Nov  estimated  12:00–15:00   0.07969 €/kWh
-    Mon 30 Nov  estimated  03:00–06:00   0.16665 €/kWh
-    Tue 1 Dec   estimated  03:00–06:00   0.16665 €/kWh
-    Wed 2 Dec   estimated  03:00–06:00   0.16665 €/kWh
+    Sat 28 Nov  estimated  12:00–15:00   0.05896 €/kWh
+  ★ Sun 29 Nov  estimated  11:00–14:00   0.05155 €/kWh
+    Mon 30 Nov  estimated  03:00–06:00   0.14956 €/kWh
+    Tue 1 Dec   estimated  03:00–06:00   0.14956 €/kWh
+    Wed 2 Dec   estimated  03:00–06:00   0.14956 €/kWh
 
-  Best: Sat 28 Nov 12:00–15:00, estimated 0.07969 €/kWh, starts in 37h30m.
-  Estimated: the average of the last 4 days of the same kind (weekdays or weekend days). It is vatio's own estimate, not Red Eléctrica's; published prices for a day arrive the evening before.
+  Best: Sun 29 Nov 11:00–14:00, estimated 0.05155 €/kWh, starts in 60h30m.
+  Estimated: for each hour, the average of two means over days of the same kind (weekdays, Saturdays or Sundays), the last 4 and the last 12. It is vatio's own estimate, not Red Eléctrica's; published prices for a day arrive the evening before.
   Source: Red Eléctrica de España (REData) · updated Thu 26 Nov 20:46
 ```
 
@@ -108,17 +108,21 @@ Each line is the cheapest window inside that day, and the star marks the best of
 the best window may also cross midnight, in which case only the `Best` line shows it.
 Durations are written as for `cheapest`. The outlook is for PVPC only.
 
-The estimate is plain on purpose. A day is a weekday (Monday to Friday) or a weekend
-day, with no holiday calendar, and each clock hour of an estimated day is priced at the
-average of that hour over the last four published days of the same kind, counting
-today and tomorrow when they are published. The figures marked `estimated` are vatio's
-own, not Red Eléctrica data: look again once the day is published. The past days it
-averages are fetched in one request and cached like any other day.
+The estimate is plain on purpose. A day is a weekday (Monday to Friday), a Saturday or a
+Sunday, with no holiday calendar. Each clock hour of an estimated day is priced at the
+average of two means of that hour over published days of the same kind: one over the
+last 4 and one over the last 12, which include the 4, counting today and tomorrow when
+they are published. The figures marked `estimated` are vatio's own, not Red Eléctrica
+data: look again once the day is published. Twelve Sundays reach twelve weeks back, so
+the first run fetches up to 90 past days, in at most three requests; they are cached
+like any other day, so later runs do not ask for them again.
 
-In a backtest over 508 evenings (July 2025 to November 2026), choosing the day and hour
-for a 3-hour run this way captured about 92% of the saving that perfect hindsight would
-have, where running at a random time captures 0%. It is an estimate from recent days,
-not a forecast of the weather or the market.
+In a backtest over 1,877 evenings (October 2021 to November 2026), choosing the day and
+hour for a 3-hour run this way captured about 85% of the saving that perfect hindsight
+would have, where running at a random time captures 0%. It was 93% over 2025 and 2026,
+and between 65% and 90% in the four years before, when prices swung more from one day to
+the next. It is an estimate from recent days, not a forecast of the weather or the
+market.
 
 ## Install
 

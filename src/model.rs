@@ -292,22 +292,21 @@ pub struct Cheapest {
 pub enum Basis {
     /// Prices published by Red Eléctrica.
     Published,
-    /// vatio's own estimate for a day whose prices are not published yet: the average
-    /// of recent published days of the same kind (see `method`). It is not Red
+    /// vatio's own estimate for a day whose prices are not published yet, made from
+    /// recent published days of the same kind (see `method`). It is not Red
     /// Eléctrica data, and not a forecast of the weather or the market.
     Estimated,
 }
 
-/// The kind of day, which decides which past days an estimate is averaged from.
-/// Public holidays get no special treatment: one that falls between Monday and
-/// Friday counts as a weekday.
+/// The kind of day, which decides which past days an estimate is averaged from: a
+/// `weekday` is any day from Monday to Friday. Public holidays get no special
+/// treatment: one that falls between Monday and Friday counts as a weekday.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DayKind {
-    /// Monday to Friday.
     Weekday,
-    /// Saturday or Sunday.
-    Weekend,
+    Saturday,
+    Sunday,
 }
 
 /// The time span an outlook searched.
@@ -343,21 +342,28 @@ pub struct OutlookDay {
     /// is left of it. Null when a run of the requested length does not fit there. On
     /// an estimated day its mean is vatio's estimate, not Red Eléctrica data.
     pub cheapest: Option<PriceWindow>,
-    /// The published days this day's estimate is the average of, `YYYY-MM-DD`, newest
-    /// first. Empty for a published day.
+    /// The published days this day's estimate is made from, `YYYY-MM-DD`, newest
+    /// first: the days of the steady mean (see `method`), of which the first
+    /// `method.fresh_days` are those of the fresh mean. Empty for a published day.
     pub estimated_from: Vec<String>,
 }
 
 /// How the days without published prices were estimated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct OutlookMethod {
-    /// Always `same_kind_days`: each clock hour of an estimated day is priced at the
-    /// mean of that clock hour over the most recent published days of the same kind,
-    /// weekdays for a weekday and weekend days for a weekend day.
-    #[schemars(extend("const" = "same_kind_days"))]
+    /// Always `fresh_and_steady_mean`: each clock hour of an estimated day is priced
+    /// at the average of two means of that clock hour over the most recent published
+    /// days of the same kind (weekdays, Saturdays or Sundays): a fresh mean over the
+    /// last `fresh_days` of them and a steady mean over the last `steady_days`, which
+    /// include the fresh ones.
+    #[schemars(extend("const" = "fresh_and_steady_mean"))]
     pub name: &'static str,
-    /// How many published days each estimate is the average of.
-    pub days_averaged: u32,
+    /// How many published days the fresh mean is over. An estimate needs that many.
+    pub fresh_days: u32,
+    /// How many published days the steady mean is over. Where fewer of the kind are
+    /// found, going back at most 90 days before today, it is over as many as there
+    /// are, and `estimated_from` lists them.
+    pub steady_days: u32,
 }
 
 /// The cheapest time to run something for a fixed duration over the next several days.

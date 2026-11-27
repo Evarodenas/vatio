@@ -28,8 +28,13 @@ const REVALIDATE_AFTER_SECS: i64 = 3600;
 
 /// How many days after the last published one an outlook estimates.
 const OUTLOOK_ESTIMATED_DAYS: usize = 5;
-/// How many days before today an outlook may reach back for days to estimate from.
-const OUTLOOK_LOOKBACK_DAYS: i64 = 16;
+/// How many days before today an outlook may reach back for days to estimate from:
+/// twelve Sundays reach twelve weeks back.
+const OUTLOOK_LOOKBACK_DAYS: i64 = 90;
+/// The longest span of past days an outlook asks for in one request. REData refuses
+/// hourly ranges much longer than a month: on the live API a 120-day range got HTTP
+/// 400, and 31 days was fine.
+const OUTLOOK_REQUEST_DAYS: i64 = 31;
 
 /// How to construct the service.
 #[derive(Debug, Clone, Default)]
@@ -376,8 +381,11 @@ impl Vatio {
             estimated.push(day);
         }
 
-        // Past days to estimate from: the cache first, then one request for the span
-        // of those still wanted, instead of one request per day.
+        // Past days to estimate from: the cache first, then requests for the spans of
+        // those still wanted, instead of one request per day. A request covers at
+        // most OUTLOOK_REQUEST_DAYS, ending at the newest day still wanted, and what
+        // is wanted is worked out again after each answer, so that nothing is asked
+        // for further back than the estimates turn out to need.
         let first = today
             .checked_sub(OUTLOOK_LOOKBACK_DAYS.days())
             .map_err(Error::internal)?;
@@ -388,38 +396,56 @@ impl Vatio {
             }
             day = day.tomorrow().map_err(Error::internal)?;
         }
-        let kinds: Vec<DayKind> = [DayKind::Weekday, DayKind::Weekend]
+        let kinds: Vec<DayKind> = [DayKind::Weekday, DayKind::Saturday, DayKind::Sunday]
             .into_iter()
             .filter(|kind| estimated.iter().any(|day| outlook::kind(*day) == *kind))
             .collect();
-        let wanted: Vec<Date> = kinds
-            .iter()
-            .flat_map(|kind| {
-                outlook::source_days(*kind, last, first, |day| known.contains_key(&day)).1
-            })
-            .collect();
-        if let (Some(from), Some(to)) = (wanted.iter().min(), wanted.iter().max()) {
-            known.extend(self.fetch_past(MARKET, *from, *to).await?);
+        // Days from here on have been asked for. One of them that did not come is
+        // not asked for again.
+        let mut asked_from = today;
+        loop {
+            let wanted: Vec<Date> = kinds
+                .iter()
+                .flat_map(|kind| {
+                    outlook::source_days(*kind, last, first, |day| known.contains_key(&day)).1
+                })
+                .filter(|day| *day < asked_from)
+                .collect();
+            let Some(to) = wanted.iter().copied().max() else {
+                break;
+            };
+            let reach = to
+                .checked_sub((OUTLOOK_REQUEST_DAYS - 1).days())
+                .map_err(Error::internal)?;
+            let from = wanted
+                .iter()
+                .copied()
+                .filter(|day| *day >= reach)
+                .min()
+                .unwrap_or(to);
+            known.extend(self.fetch_past(MARKET, from, to).await?);
+            asked_from = from;
         }
 
-        // One estimate per kind of day: the days it is averaged from, and its 24 hours.
+        // One estimate per kind of day: the days it is made from, and its 24 hours.
         let mut estimates = Vec::new();
         for kind in kinds {
             let (from, _) = outlook::source_days(kind, last, first, |day| known.contains_key(&day));
-            if from.len() < outlook::DAYS_AVERAGED {
+            if from.len() < outlook::FRESH_DAYS {
                 let name = match kind {
                     DayKind::Weekday => "weekdays",
-                    DayKind::Weekend => "weekend days",
+                    DayKind::Saturday => "Saturdays",
+                    DayKind::Sunday => "Sundays",
                 };
                 return Err(Error::no_data(format!(
                     "too little price history for an outlook: {} published {name} are needed to \
-                     estimate from, and only {} were found from {first} on",
-                    outlook::DAYS_AVERAGED,
+                     estimate from; found {} from {first} on",
+                    outlook::FRESH_DAYS,
                     from.len()
                 )));
             }
             let days: Vec<&[Slot]> = from.iter().map(|day| known[day].slots.as_slice()).collect();
-            let hourly = outlook::hourly_means(&days);
+            let hourly = outlook::estimate(&days);
             estimates.push((kind, from, hourly));
         }
         let estimate = |day: Date| {
@@ -508,8 +534,9 @@ impl Vatio {
             },
             days,
             method: OutlookMethod {
-                name: "same_kind_days",
-                days_averaged: outlook::DAYS_AVERAGED as u32,
+                name: "fresh_and_steady_mean",
+                fresh_days: outlook::FRESH_DAYS as u32,
+                steady_days: outlook::STEADY_DAYS as u32,
             },
             warnings,
             sources,
